@@ -67,7 +67,6 @@ fn slice_data(data: &mut [u8], offset: u32, size: u32) -> &mut [u8] {
 }
 
 pub fn apply_record(data: &mut [u8], record: Record) {
-    println!("{record:#x?}");
     match record {
         Record::Normal {
             offset,
