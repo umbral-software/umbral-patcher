@@ -7,6 +7,9 @@ use std::{
 const IPS_EOF: &[u8] = b"EOF";
 const IPS_HEADER: &[u8] = b"PATCH";
 
+#[cfg(test)]
+mod tests;
+
 type Result<T> = result::Result<T, Error>;
 
 #[derive(Debug, Clone, Copy)]
@@ -29,7 +32,7 @@ impl Display for Error {
 
 impl error::Error for Error {}
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum Record {
     Normal { offset: u32, data: Vec<u8> },
     RLE { offset: u32, size: u16, data: u8 },
