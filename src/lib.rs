@@ -62,22 +62,23 @@ impl Debug for Record {
     }
 }
 
-fn slice_data(data: &mut [u8], offset: u32, size: u32) -> Result<&mut [u8]> {
-    data.get_mut((offset as usize)..(offset as usize + size as usize))
-        .ok_or(Error::UnexpectedDataEOF)
-}
-
 pub fn apply_record(data: &mut [u8], record: Record) -> Result<()> {
     match record {
         Record::Normal {
             offset,
             data: new_data,
-        } => slice_data(data, offset, new_data.len() as u32)?.copy_from_slice(&new_data),
+        } => data
+            .get_mut(offset as usize..(offset as usize + data.len()))
+            .ok_or(Error::UnexpectedDataEOF)?
+            .copy_from_slice(&new_data),
         Record::RLE {
             offset,
             size,
             data: new_data,
-        } => slice_data(data, offset, size as u32)?.fill(new_data),
+        } => data
+            .get_mut(offset as usize..(offset as usize + size as usize))
+            .ok_or(Error::UnexpectedDataEOF)?
+            .fill(new_data),
     }
     Ok(())
 }
