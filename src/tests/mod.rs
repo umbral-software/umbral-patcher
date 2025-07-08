@@ -8,7 +8,7 @@ fn parse_single_normal() -> Result<()> {
         record,
         vec![Record::Normal {
             offset: 0x426900,
-            data: Vec::from([0, 0])
+            data: From::from([0, 0].as_slice())
         }]
     );
     Ok(())
