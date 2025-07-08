@@ -12,7 +12,7 @@ mod tests;
 
 type Result<T> = result::Result<T, Error>;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Error {
     InvalidHeader,
