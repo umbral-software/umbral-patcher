@@ -65,6 +65,31 @@ impl Debug for Record {
     }
 }
 
+pub fn apply_ips(data: &mut [u8], ips: &[u8]) -> Result<()> {
+    for record in parse_ips(ips)? {
+        apply_record(data, record)?;
+    }
+
+    Ok(())
+}
+
+pub fn parse_ips(ips: &[u8]) -> Result<impl IntoIterator<Item = Record>> {
+    let header = ips.get(..IPS_HEADER.len()).ok_or(Error::UnexpectedIPSEOF)?;
+    if header != IPS_HEADER {
+        return Err(Error::InvalidHeader);
+    }
+
+    let mut records = Vec::new();
+    let mut offset = IPS_HEADER.len();
+
+    while let Some(record) = parse_ips_record(ips.get(offset..).ok_or(Error::UnexpectedIPSEOF)?)? {
+        offset += record.len();
+        records.push(record);
+    }
+
+    Ok(records)
+}
+
 pub fn apply_record(data: &mut [u8], record: Record) -> Result<()> {
     match record {
         Record::Normal {
@@ -83,14 +108,6 @@ pub fn apply_record(data: &mut [u8], record: Record) -> Result<()> {
             .ok_or(Error::UnexpectedDataEOF)?
             .fill(new_data),
     }
-    Ok(())
-}
-
-pub fn apply_ips(data: &mut [u8], ips: &[u8]) -> Result<()> {
-    for record in parse_ips(ips)? {
-        apply_record(data, record)?;
-    }
-
     Ok(())
 }
 
@@ -121,21 +138,4 @@ fn parse_ips_record(ips: &[u8]) -> Result<Option<Record>> {
             }))
         }
     }
-}
-
-pub fn parse_ips(ips: &[u8]) -> Result<impl IntoIterator<Item = Record>> {
-    let header = ips.get(..IPS_HEADER.len()).ok_or(Error::UnexpectedIPSEOF)?;
-    if header != IPS_HEADER {
-        return Err(Error::InvalidHeader);
-    }
-
-    let mut records = Vec::new();
-    let mut offset = IPS_HEADER.len();
-
-    while let Some(record) = parse_ips_record(ips.get(offset..).ok_or(Error::UnexpectedIPSEOF)?)? {
-        offset += record.len();
-        records.push(record);
-    }
-
-    Ok(records)
 }
