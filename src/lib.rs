@@ -79,7 +79,7 @@ pub fn apply_record(data: &mut [u8], record: Record) -> Result<()> {
             offset,
             data: new_data,
         } => data
-            .get_mut(offset as usize..(offset as usize + data.len()))
+            .get_mut(offset as usize..(offset as usize + new_data.len()))
             .ok_or(Error::UnexpectedDataEOF)?
             .copy_from_slice(&new_data),
         Record::RLE {
