@@ -94,7 +94,7 @@ pub fn apply_record(data: &mut [u8], record: Record) -> Result<()> {
     Ok(())
 }
 
-pub fn parse_ips(ips: &[u8]) -> Result<impl IntoIterator<Item = Record>> {
+pub fn parse_ips(ips: &[u8]) -> Result<impl Iterator<Item = Record>> {
     let header = ips.get(..IPS_HEADER.len()).ok_or(Error::UnexpectedIPSEOF)?;
     if header != IPS_HEADER {
         return Err(Error::InvalidHeader);
@@ -108,7 +108,7 @@ pub fn parse_ips(ips: &[u8]) -> Result<impl IntoIterator<Item = Record>> {
         records.push(record);
     }
 
-    Ok(records)
+    Ok(records.into_iter())
 }
 
 fn parse_ips_record(ips: &[u8]) -> Result<Option<Record>> {
