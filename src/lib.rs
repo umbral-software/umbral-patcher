@@ -4,6 +4,8 @@ use std::{
     result,
 };
 
+use smallvec::SmallVec;
+
 const IPS_EOF: &[u8] = b"EOF";
 const IPS_HEADER: &[u8] = b"PATCH";
 
@@ -34,7 +36,7 @@ impl error::Error for Error {}
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum Record {
-    Normal { offset: u32, data: Vec<u8> },
+    Normal { offset: u32, data: SmallVec<[u8; 32]> },
     RLE { offset: u32, size: u16, data: u8 },
 }
 
@@ -125,7 +127,7 @@ fn parse_ips_record(ips: &[u8]) -> Result<Option<Record>> {
                 .ok_or(Error::UnexpectedIPSEOF)?;
             Ok(Some(Record::Normal {
                 offset,
-                data: Vec::from(data_bytes),
+                data: SmallVec::from(data_bytes),
             }))
         } else {
             let rle_size_bytes = ips.get(5..7).ok_or(Error::UnexpectedIPSEOF)?;
