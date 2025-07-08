@@ -14,7 +14,7 @@ const IPS_HEADER: &[u8] = b"PATCH";
 
 type Result<T> = result::Result<T, Error>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug)]
 #[non_exhaustive]
 pub enum Error {
     InvalidHeader,
