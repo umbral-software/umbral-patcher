@@ -6,11 +6,11 @@ use std::{
 
 use smallvec::SmallVec;
 
-const IPS_EOF: &[u8] = b"EOF";
-const IPS_HEADER: &[u8] = b"PATCH";
-
 #[cfg(test)]
 mod tests;
+
+const IPS_EOF: &[u8] = b"EOF";
+const IPS_HEADER: &[u8] = b"PATCH";
 
 type Result<T> = result::Result<T, Error>;
 
