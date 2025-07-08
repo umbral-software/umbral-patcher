@@ -36,7 +36,7 @@ impl error::Error for Error {}
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum Record {
-    Normal { offset: u32, data: SmallVec<[u8; 32]> },
+    Normal { offset: u32, data: SmallVec<[u8; 64]> },
     RLE { offset: u32, size: u16, data: u8 },
 }
 
