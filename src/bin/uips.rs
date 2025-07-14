@@ -2,6 +2,7 @@ use clap::Parser;
 use std::error::Error;
 use std::ffi::OsString;
 use std::fs::{self, File};
+use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::result::Result;
 
@@ -29,7 +30,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .expect("Could not deduce output file name");
 
     let mut data = fs::read(args.input)?;
-    let ips = File::open(args.ips)?;
+    let ips = BufReader::new(File::open(args.ips)?);
     umbralips::apply_ips(&mut data, ips)?;
     fs::write(output, data)?;
 
