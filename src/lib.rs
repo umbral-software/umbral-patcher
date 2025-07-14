@@ -1,7 +1,7 @@
 use std::{
     error,
     fmt::{Debug, Display},
-    io, result,
+    io, result, slice,
 };
 
 use smallvec::SmallVec;
@@ -150,9 +150,9 @@ fn parse_ips_record<T: io::Read>(mut ips: T) -> Result<Option<Record>> {
                 u16::from_be_bytes([rle_size_bytes[0], rle_size_bytes[1]])
             };
             let data = {
-                let mut data_bytes = [0; 1];
-                ips.read_exact(&mut data_bytes).map_err(Error::IO)?;
-                data_bytes[0]
+                let mut data = 0;
+                ips.read_exact(slice::from_mut(&mut data)).map_err(Error::IO)?;
+                data
             };
             Ok(Some(Record::RLE {
                 offset,
