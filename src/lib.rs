@@ -1,7 +1,7 @@
 use std::{
     error,
     fmt::{Debug, Display},
-    result,
+    io, result,
 };
 
 use smallvec::SmallVec;
@@ -19,7 +19,7 @@ type Result<T> = result::Result<T, Error>;
 pub enum Error {
     InvalidHeader,
     UnexpectedDataEOF,
-    UnexpectedIPSEOF,
+    IO(io::Error),
 }
 
 impl Display for Error {
@@ -27,26 +27,31 @@ impl Display for Error {
         match self {
             Error::InvalidHeader => write!(f, "IPS header invalid"),
             Error::UnexpectedDataEOF => write!(f, "unexpected end-of-file when modifying data"),
-            Error::UnexpectedIPSEOF => write!(f, "unexpected end-of-file while parsing IPS"),
+            Error::IO(inner) => write!(f, "I/O error \"{inner}\""),
         }
     }
 }
 
-impl error::Error for Error {}
+impl error::Error for Error {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        match self {
+            Error::IO(inner) => Some(inner),
+            _ => None,
+        }
+    }
+}
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum Record {
-    Normal { offset: u32, data: SmallVec<[u8; 64]> },
-    RLE { offset: u32, size: u16, data: u8 },
-}
-
-impl Record {
-    fn len(&self) -> usize {
-        match self {
-            Record::Normal { data, .. } => 5 + data.len(),
-            Record::RLE { .. } => 8,
-        }
-    }
+    Normal {
+        offset: u32,
+        data: SmallVec<[u8; 64]>,
+    },
+    RLE {
+        offset: u32,
+        size: u16,
+        data: u8,
+    },
 }
 
 impl Debug for Record {
@@ -67,7 +72,7 @@ impl Debug for Record {
     }
 }
 
-pub fn apply_ips(data: &mut [u8], ips: &[u8]) -> Result<()> {
+pub fn apply_ips<T: io::Read>(data: &mut [u8], ips: T) -> Result<()> {
     for record in parse_ips(ips)? {
         apply_record(data, record)?;
     }
@@ -96,43 +101,59 @@ pub fn apply_record(data: &mut [u8], record: Record) -> Result<()> {
     Ok(())
 }
 
-pub fn parse_ips(ips: &[u8]) -> Result<impl Iterator<Item = Record>> {
-    let header = ips.get(..IPS_HEADER.len()).ok_or(Error::UnexpectedIPSEOF)?;
+pub fn parse_ips<T: io::Read>(mut ips: T) -> Result<impl Iterator<Item = Record>> {
+    let header = {
+        let mut header = [0; IPS_HEADER.len()];
+        ips.read_exact(&mut header).map_err(Error::IO)?;
+        header
+    };
     if header != IPS_HEADER {
         return Err(Error::InvalidHeader);
     }
 
     let mut records = Vec::new();
-    let mut offset = IPS_HEADER.len();
 
-    while let Some(record) = parse_ips_record(ips.get(offset..).ok_or(Error::UnexpectedIPSEOF)?)? {
-        offset += record.len();
+    while let Some(record) = parse_ips_record(&mut ips)? {
         records.push(record);
     }
 
     Ok(records.into_iter())
 }
 
-fn parse_ips_record(ips: &[u8]) -> Result<Option<Record>> {
-    let offset_bytes = ips.get(..3).ok_or(Error::UnexpectedIPSEOF)?;
+fn parse_ips_record<T: io::Read>(mut ips: T) -> Result<Option<Record>> {
+    let offset_bytes = {
+        let mut offset_bytes = [0; 3];
+        ips.read_exact(&mut offset_bytes).map_err(Error::IO)?;
+        offset_bytes
+    };
+
     if offset_bytes == IPS_EOF {
         Ok(None)
     } else {
         let offset = u32::from_be_bytes([0, offset_bytes[0], offset_bytes[1], offset_bytes[2]]);
-        let size_bytes = ips.get(3..5).ok_or(Error::UnexpectedIPSEOF)?;
-        let size = u16::from_be_bytes([size_bytes[0], size_bytes[1]]);
+        let size = {
+            let mut size_bytes = [0; 2];
+            ips.read_exact(&mut size_bytes).map_err(Error::IO)?;
+            u16::from_be_bytes([size_bytes[0], size_bytes[1]])
+        };
         if size > 0 {
-            let data_bytes = ips
-                .get(5..(5 + size as usize))
-                .ok_or(Error::UnexpectedIPSEOF)?;
-            Ok(Some(Record::Normal {
-                offset,
-                data: SmallVec::from(data_bytes),
-            }))
+            let data = {
+                let mut data_bytes = SmallVec::from_elem(0, size as usize);
+                ips.read_exact(&mut data_bytes).map_err(Error::IO)?;
+                data_bytes
+            };
+            Ok(Some(Record::Normal { offset, data }))
         } else {
-            let rle_size_bytes = ips.get(5..7).ok_or(Error::UnexpectedIPSEOF)?;
-            let rle_size = u16::from_be_bytes([rle_size_bytes[0], rle_size_bytes[1]]);
-            let data = *ips.get(7).ok_or(Error::UnexpectedIPSEOF)?;
+            let rle_size = {
+                let mut rle_size_bytes = [0; 2];
+                ips.read_exact(&mut rle_size_bytes).map_err(Error::IO)?;
+                u16::from_be_bytes([rle_size_bytes[0], rle_size_bytes[1]])
+            };
+            let data = {
+                let mut data_bytes = [0; 1];
+                ips.read_exact(&mut data_bytes).map_err(Error::IO)?;
+                data_bytes[0]
+            };
             Ok(Some(Record::RLE {
                 offset,
                 size: rle_size,
