@@ -14,12 +14,10 @@ struct Args {
     output: Option<OsString>,
 }
 
-fn generate_output_name(input: &OsStr, ips: &OsStr) -> Option<OsString> {
-    let mut ret = PathBuf::new();
-
-    ret.push(Path::new(input).parent()?);
-    ret.push(Path::new(ips).file_stem()?);
-    ret.set_extension(Path::new(input).extension()?);
+fn generate_output_name(input: &Path, ips: &Path) -> Option<OsString> {
+    let mut ret = input.parent()?.to_path_buf();
+    ret.set_file_name(ips.file_stem()?);
+    ret.set_extension(input.extension()?);
 
     Some(ret.into_os_string())
 }
@@ -28,7 +26,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
     let output = args
         .output
-        .or_else(|| generate_output_name(&args.input, &args.ips))
+        .or_else(|| generate_output_name(Path::new(&args.input), Path::new(&args.ips)))
         .expect("Could not deduce output file name");
 
     let mut data = fs::read(args.input)?;
