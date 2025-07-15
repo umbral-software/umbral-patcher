@@ -151,7 +151,8 @@ fn parse_ips_record<T: io::Read>(mut ips: T) -> Result<Option<Record>> {
             };
             let data = {
                 let mut data = 0;
-                ips.read_exact(slice::from_mut(&mut data)).map_err(Error::IO)?;
+                ips.read_exact(slice::from_mut(&mut data))
+                    .map_err(Error::IO)?;
                 data
             };
             Ok(Some(Record::RLE {
