@@ -5,6 +5,9 @@ use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::result::Result;
 
+#[cfg(test)]
+mod tests;
+
 #[derive(Parser, Debug)]
 #[command(version)]
 struct Args {
