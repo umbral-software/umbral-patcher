@@ -1,6 +1,6 @@
 use clap::Parser;
 use std::error::Error;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fs::{self, File};
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
@@ -14,19 +14,21 @@ struct Args {
     output: Option<OsString>,
 }
 
+fn generate_output_name(input: &OsStr, ips: &OsStr) -> Option<OsString> {
+    let mut ret = PathBuf::new();
+
+    ret.push(Path::new(input).parent()?);
+    ret.push(Path::new(ips).file_stem()?);
+    ret.set_extension(Path::new(input).extension()?);
+
+    Some(ret.into_os_string())
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
     let output = args
         .output
-        .or_else(|| {
-            let mut ret = PathBuf::new();
-
-            ret.push(Path::new(&args.input).parent()?);
-            ret.push(Path::new(&args.ips).file_stem()?);
-            ret.set_extension(Path::new(&args.input).extension()?);
-
-            Some(ret.into_os_string())
-        })
+        .or_else(|| generate_output_name(&args.input, &args.ips))
         .expect("Could not deduce output file name");
 
     let mut data = fs::read(args.input)?;
