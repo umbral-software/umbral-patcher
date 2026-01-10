@@ -1,10 +1,14 @@
 use std::{
+    cmp,
     error,
     fmt::{Debug, Display},
     io, result, slice,
 };
 
 use smallvec::SmallVec;
+
+// Pretty arbitary size choice, but improves perf a lot over a std::vec
+const INLINE_DATA_SIZE: usize = 64;
 
 #[cfg(test)]
 mod tests;
@@ -45,7 +49,7 @@ impl error::Error for Error {
 pub enum Record {
     Normal {
         offset: u32,
-        data: SmallVec<[u8; 64]>,
+        data: SmallVec<[u8; INLINE_DATA_SIZE]>,
     },
     RLE {
         offset: u32,
@@ -72,7 +76,7 @@ impl Debug for Record {
     }
 }
 
-pub fn apply_ips<T: io::Read>(data: &mut [u8], ips: T) -> Result<()> {
+pub fn apply_ips<T: io::Read>(data: &mut Vec<u8>, ips: T) -> Result<()> {
     for record in parse_ips(ips)? {
         apply_record(data, record)?;
     }
@@ -80,23 +84,31 @@ pub fn apply_ips<T: io::Read>(data: &mut [u8], ips: T) -> Result<()> {
     Ok(())
 }
 
-pub fn apply_record(data: &mut [u8], record: Record) -> Result<()> {
+pub fn apply_record(data: &mut Vec<u8>, record: Record) -> Result<()> {
     match record {
         Record::Normal {
             offset,
             data: new_data,
-        } => data
-            .get_mut(offset as usize..(offset as usize + new_data.len()))
+        } => {
+            let end_size = offset as usize + new_data.len();
+            data.resize(cmp::max(data.len(), end_size), 0);
+            data
+            .get_mut(offset as usize..end_size)
             .ok_or(Error::UnexpectedDataEOF)?
-            .copy_from_slice(&new_data),
+            .copy_from_slice(&new_data)
+        },
         Record::RLE {
             offset,
             size,
             data: new_data,
-        } => data
-            .get_mut(offset as usize..(offset as usize + size as usize))
+        } => {
+            let end_size = offset as usize + size as usize;
+            data.resize(cmp::max(data.len(), end_size), 0);
+            data
+            .get_mut(offset as usize..end_size)
             .ok_or(Error::UnexpectedDataEOF)?
-            .fill(new_data),
+            .fill(new_data)
+        },
     }
     Ok(())
 }
