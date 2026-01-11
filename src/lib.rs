@@ -1,6 +1,5 @@
 use std::{
-    cmp,
-    error,
+    cmp, error,
     fmt::{Debug, Display},
     io, result, slice,
 };
@@ -92,11 +91,10 @@ pub fn apply_record(data: &mut Vec<u8>, record: Record) -> Result<()> {
         } => {
             let end_size = offset as usize + new_data.len();
             data.resize(cmp::max(data.len(), end_size), 0);
-            data
-            .get_mut(offset as usize..end_size)
-            .ok_or(Error::UnexpectedDataEOF)?
-            .copy_from_slice(&new_data)
-        },
+            data.get_mut(offset as usize..end_size)
+                .ok_or(Error::UnexpectedDataEOF)?
+                .copy_from_slice(&new_data)
+        }
         Record::RLE {
             offset,
             size,
@@ -104,11 +102,10 @@ pub fn apply_record(data: &mut Vec<u8>, record: Record) -> Result<()> {
         } => {
             let end_size = offset as usize + size as usize;
             data.resize(cmp::max(data.len(), end_size), 0);
-            data
-            .get_mut(offset as usize..end_size)
-            .ok_or(Error::UnexpectedDataEOF)?
-            .fill(new_data)
-        },
+            data.get_mut(offset as usize..end_size)
+                .ok_or(Error::UnexpectedDataEOF)?
+                .fill(new_data)
+        }
     }
     Ok(())
 }
