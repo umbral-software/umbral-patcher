@@ -93,7 +93,7 @@ pub fn apply_record(data: &mut Vec<u8>, record: Record) -> Result<()> {
             data.resize(cmp::max(data.len(), end_size), 0);
             data.get_mut(offset as usize..end_size)
                 .ok_or(Error::UnexpectedDataEOF)?
-                .copy_from_slice(&new_data)
+                .copy_from_slice(&new_data);
         }
         Record::RLE {
             offset,
@@ -104,7 +104,7 @@ pub fn apply_record(data: &mut Vec<u8>, record: Record) -> Result<()> {
             data.resize(cmp::max(data.len(), end_size), 0);
             data.get_mut(offset as usize..end_size)
                 .ok_or(Error::UnexpectedDataEOF)?
-                .fill(new_data)
+                .fill(new_data);
         }
     }
     Ok(())
