@@ -57,6 +57,21 @@ pub enum Record {
     },
 }
 
+impl Record {
+    fn offset(&self) -> u32 {
+        match self {
+            Record::Normal { offset, .. } | Record::RLE { offset, .. } => *offset,
+        }
+    }
+
+    fn len(&self) -> u16 {
+        match self {
+            Record::Normal { data, .. } => u16::try_from(data.len()).unwrap(),
+            Record::RLE { size, .. } => *size,
+        }
+    }
+}
+
 impl Debug for Record {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -84,27 +99,18 @@ pub fn apply_ips<T: io::Read>(data: &mut Vec<u8>, ips: T) -> Result<()> {
 }
 
 pub fn apply_record(data: &mut Vec<u8>, record: Record) -> Result<()> {
+    let begin = record.offset() as usize;
+    let len = record.len() as usize;
+    let end = begin + len;
+    data.resize(cmp::max(data.len(), end), 0);
+    let slice = data.get_mut(begin..end).ok_or(Error::UnexpectedDataEOF)?;
+
     match record {
-        Record::Normal {
-            offset,
-            data: new_data,
-        } => {
-            let end_size = offset as usize + new_data.len();
-            data.resize(cmp::max(data.len(), end_size), 0);
-            data.get_mut(offset as usize..end_size)
-                .ok_or(Error::UnexpectedDataEOF)?
-                .copy_from_slice(&new_data);
+        Record::Normal { data: new_data, .. } => {
+            slice.copy_from_slice(&new_data);
         }
-        Record::RLE {
-            offset,
-            size,
-            data: new_data,
-        } => {
-            let end_size = offset as usize + size as usize;
-            data.resize(cmp::max(data.len(), end_size), 0);
-            data.get_mut(offset as usize..end_size)
-                .ok_or(Error::UnexpectedDataEOF)?
-                .fill(new_data);
+        Record::RLE { data: new_data, .. } => {
+            slice.fill(new_data);
         }
     }
     Ok(())
