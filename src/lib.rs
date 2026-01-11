@@ -7,7 +7,7 @@ use std::{
 use smallvec::SmallVec;
 
 // Pretty arbitary size choice, but improves perf a lot over a std::vec
-const INLINE_DATA_SIZE: usize = 72;
+const INLINE_DATA_SIZE: usize = 64;
 
 #[cfg(test)]
 mod tests;
