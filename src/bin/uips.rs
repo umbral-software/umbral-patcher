@@ -1,7 +1,7 @@
 use clap::Parser;
 use std::error::Error;
 use std::fs::{self, File};
-use std::io::BufReader;
+use std::io::{BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::result::Result;
 
@@ -19,7 +19,7 @@ struct Args {
 fn generate_output_name(input: &Path, ips: &Path) -> Option<PathBuf> {
     let mut ret = input.parent()?.to_path_buf();
     ret.push(ips.file_stem()?);
-    ret.set_extension(input.extension()?);
+    ret.add_extension(input.extension()?);
 
     Some(ret)
 }
@@ -33,8 +33,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut data = fs::read(args.input)?;
     let ips = BufReader::new(File::open(args.ips)?);
+    let mut out: File = File::create_new(output)?;
+
     umbralips::apply_ips(&mut data, ips)?;
-    fs::write(output, data)?;
+    out.write_all(&data)?;
 
     Ok(())
 }
