@@ -1,5 +1,5 @@
 use std::{
-    cmp, error,
+    error,
     fmt::{Debug, Display},
     io, result, slice,
 };
@@ -79,7 +79,7 @@ impl Debug for Record {
                 .debug_struct("Normal")
                 .field("offset", offset)
                 .field("size", &data.len())
-                .finish(),
+                .finish_non_exhaustive(),
             Self::RLE { offset, size, data } => f
                 .debug_struct("RLE")
                 .field("offset", offset)
@@ -102,8 +102,10 @@ pub fn apply_record(data: &mut Vec<u8>, record: Record) -> Result<()> {
     let begin = record.offset() as usize;
     let len = record.len() as usize;
     let end = begin + len;
-    data.resize(cmp::max(data.len(), end), 0);
-    let slice = data.get_mut(begin..end).ok_or(Error::UnexpectedDataEOF)?;
+    if end > data.len() {
+        data.resize(end, 0);
+    }
+    let slice = data.get_mut(begin..end).unwrap();
 
     match record {
         Record::Normal { data: new_data, .. } => {
