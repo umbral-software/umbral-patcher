@@ -151,7 +151,7 @@ fn parse_ips_record<T: io::Read>(mut ips: T) -> Result<Option<Record>> {
         let size = {
             let mut size_bytes = [0; 2];
             ips.read_exact(&mut size_bytes).map_err(Error::IO)?;
-            u16::from_be_bytes([size_bytes[0], size_bytes[1]])
+            u16::from_be_bytes(size_bytes)
         };
         if size > 0 {
             let data = {
@@ -164,7 +164,7 @@ fn parse_ips_record<T: io::Read>(mut ips: T) -> Result<Option<Record>> {
             let rle_size = {
                 let mut rle_size_bytes = [0; 2];
                 ips.read_exact(&mut rle_size_bytes).map_err(Error::IO)?;
-                u16::from_be_bytes([rle_size_bytes[0], rle_size_bytes[1]])
+                u16::from_be_bytes(rle_size_bytes)
             };
             let data = {
                 let mut data = 0;
