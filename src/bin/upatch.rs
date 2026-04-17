@@ -1,7 +1,8 @@
 use clap::Parser;
+use umbral_patcher::ips;
 use std::error::Error;
 use std::fs::{self, File};
-use std::io::{BufReader, Write};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::result::Result;
 
@@ -32,16 +33,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         .expect("Could not deduce output file name");
 
     let mut data = fs::read(args.input)?;
-    let patch = BufReader::new(File::open(args.ips)?);
+    let patch = File::open(args.ips)?;
+
     let mut out: File = File::create_new(&output)?;
 
-    match umbral_patcher::ips::apply_ips(&mut data, patch) {
-        Ok(()) => out.write_all(&data)?,
-        Err(error) => {
-            fs::remove_file(output)?;
-            Err(error)
-        }?,
-    };
+    let patchset = ips::File::parse(patch)?;
+    patchset.apply(&mut data);
+
+    out.write_all(&data)?;
 
     Ok(())
 }
