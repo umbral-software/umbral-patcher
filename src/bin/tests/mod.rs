@@ -1,6 +1,16 @@
 use std::path::{Path, PathBuf}; 
 
-use crate::generate_output_name;
+use crate::{PatchFormat, extension_to_format, generate_output_name};
+
+#[test]
+fn format() {
+    const INPUT: &str = "/foo/bar/baz.ips";
+
+    assert_eq!(
+        extension_to_format(Path::new(INPUT)),
+        Some(PatchFormat::IPS)
+    )
+}
 
 #[test]
 fn output_name() {

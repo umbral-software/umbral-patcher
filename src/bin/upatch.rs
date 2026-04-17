@@ -1,4 +1,4 @@
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use umbral_patcher::ips;
 use std::error::Error;
 use std::fs::{self, File};
@@ -9,12 +9,31 @@ use std::result::Result;
 #[cfg(test)]
 mod tests;
 
-#[derive(Parser, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq, ValueEnum)]
+enum PatchFormat {
+    BPS,
+    IPS,
+    UPS
+}
+
+#[derive(Debug, Parser)]
 #[command(version)]
 struct Args {
     input: PathBuf,
-    ips: PathBuf,
+    patch: PathBuf,
     output: Option<PathBuf>,
+
+    #[clap(long)]
+    format: Option<PatchFormat>
+}
+
+fn extension_to_format(patch: &Path) -> Option<PatchFormat> {
+    match patch.extension()?.to_str()?.to_ascii_lowercase().as_str() {
+        "bps" => Some(PatchFormat::BPS),
+        "ips" => Some(PatchFormat::IPS),
+        "ups" => Some(PatchFormat::UPS),
+        _ => None
+    }
 }
 
 fn generate_output_name(input: &Path, ips: &Path) -> Option<PathBuf> {
@@ -27,18 +46,24 @@ fn generate_output_name(input: &Path, ips: &Path) -> Option<PathBuf> {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
+    let format = args.format.or_else(|| extension_to_format(&args.patch)).expect("Could not deduce patch file format");
     let output = args
         .output
-        .or_else(|| generate_output_name(&args.input, &args.ips))
+        .or_else(|| generate_output_name(&args.input, &args.patch))
         .expect("Could not deduce output file name");
 
     let mut data = fs::read(args.input)?;
-    let patch = File::open(args.ips)?;
+    let patch = File::open(args.patch)?;
 
     let mut out: File = File::create_new(&output)?;
 
-    let patchset = ips::File::parse(patch)?;
-    patchset.apply(&mut data);
+    match format {
+        PatchFormat::IPS => {
+            let patchset = ips::File::parse(patch)?;
+            patchset.apply(&mut data);
+        },
+        _ => todo!()
+    }
 
     out.write_all(&data)?;
 
