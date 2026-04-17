@@ -33,10 +33,15 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut data = fs::read(args.input)?;
     let ips = BufReader::new(File::open(args.ips)?);
-    let mut out: File = File::create_new(output)?;
+    let mut out: File = File::create_new(&output)?;
 
-    umbralips::apply_ips(&mut data, ips)?;
-    out.write_all(&data)?;
+    match umbralips::apply_ips(&mut data, ips) {
+        Ok(()) => out.write_all(&data)?,
+        Err(error) => {
+            fs::remove_file(output)?;
+            Err(error)
+        }?,
+    };
 
     Ok(())
 }
