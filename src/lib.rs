@@ -22,7 +22,6 @@ type Result<T> = result::Result<T, Error>;
 #[non_exhaustive]
 pub enum Error {
     InvalidHeader,
-    UnexpectedDataEOF,
     IO(io::Error),
 }
 
@@ -30,7 +29,6 @@ impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Error::InvalidHeader => write!(f, "IPS header invalid"),
-            Error::UnexpectedDataEOF => write!(f, "unexpected end-of-file when modifying data"),
             Error::IO(inner) => write!(f, "I/O error \"{inner}\""),
         }
     }
