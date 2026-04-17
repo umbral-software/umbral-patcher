@@ -23,7 +23,7 @@ struct Args {
     patch: PathBuf,
     output: Option<PathBuf>,
 
-    #[clap(long)]
+    #[clap(short, long)]
     format: Option<PatchFormat>,
 }
 
