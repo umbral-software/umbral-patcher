@@ -91,13 +91,13 @@ impl Debug for Record {
 
 pub fn apply_ips<T: io::Read>(data: &mut Vec<u8>, ips: T) -> Result<()> {
     for record in parse_ips(ips)? {
-        apply_record(data, record)?;
+        apply_record(data, record);
     }
 
     Ok(())
 }
 
-pub fn apply_record(data: &mut Vec<u8>, record: Record) -> Result<()> {
+pub fn apply_record(data: &mut Vec<u8>, record: Record) {
     let begin = record.offset() as usize;
     let len = record.len() as usize;
     let end = begin + len;
@@ -114,7 +114,6 @@ pub fn apply_record(data: &mut Vec<u8>, record: Record) -> Result<()> {
             slice.fill(new_data);
         }
     }
-    Ok(())
 }
 
 pub fn parse_ips<T: io::Read>(mut ips: T) -> Result<impl IntoIterator<Item = Record>> {
@@ -129,17 +128,17 @@ pub fn parse_ips<T: io::Read>(mut ips: T) -> Result<impl IntoIterator<Item = Rec
 
     let mut records = Vec::new();
 
-    while let Some(record) = parse_ips_record(&mut ips)? {
+    while let Some(record) = parse_ips_record(&mut ips).map_err(Error::IO)? {
         records.push(record);
     }
 
     Ok(records)
 }
 
-fn parse_ips_record<T: io::Read>(mut ips: T) -> Result<Option<Record>> {
+fn parse_ips_record<T: io::Read>(mut ips: T) -> io::Result<Option<Record>> {
     let offset_bytes = {
         let mut offset_bytes = [0; 3];
-        ips.read_exact(&mut offset_bytes).map_err(Error::IO)?;
+        ips.read_exact(&mut offset_bytes)?;
         offset_bytes
     };
 
@@ -147,17 +146,17 @@ fn parse_ips_record<T: io::Read>(mut ips: T) -> Result<Option<Record>> {
         Ok(None)
     } else {
         let offset = BE::read_u24(&offset_bytes);
-        let size = ips.read_u16::<BE>().map_err(Error::IO)?;
+        let size = ips.read_u16::<BE>()?;
         if size > 0 {
             let data = {
                 let mut data_bytes = SmallVec::from_elem(0, size as usize);
-                ips.read_exact(&mut data_bytes).map_err(Error::IO)?;
+                ips.read_exact(&mut data_bytes)?;
                 data_bytes
             };
             Ok(Some(Record::Normal { offset, data }))
         } else {
-            let size = ips.read_u16::<BE>().map_err(Error::IO)?;
-            let data = ips.read_u8().map_err(Error::IO)?;
+            let size = ips.read_u16::<BE>()?;
+            let data = ips.read_u8()?;
             Ok(Some(Record::RLE {
                 offset,
                 size,
