@@ -32,10 +32,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         .expect("Could not deduce output file name");
 
     let mut data = fs::read(args.input)?;
-    let ips = BufReader::new(File::open(args.ips)?);
+    let patch = BufReader::new(File::open(args.ips)?);
     let mut out: File = File::create_new(&output)?;
 
-    match umbralips::apply_ips(&mut data, ips) {
+    match umbral_patcher::ips::apply_ips(&mut data, patch) {
         Ok(()) => out.write_all(&data)?,
         Err(error) => {
             fs::remove_file(output)?;
