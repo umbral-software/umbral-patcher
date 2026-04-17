@@ -1,9 +1,10 @@
 use std::{
     error,
     fmt::{Debug, Display},
-    io, result, slice,
+    io, result,
 };
 
+use byteorder::{BE, ReadBytesExt};
 use smallvec::SmallVec;
 
 // Pretty arbitary size choice, but improves perf a lot over a std::vec
@@ -147,12 +148,8 @@ fn parse_ips_record<T: io::Read>(mut ips: T) -> Result<Option<Record>> {
     if offset_bytes == IPS_EOF {
         Ok(None)
     } else {
-        let offset = u32::from_be_bytes([0, offset_bytes[0], offset_bytes[1], offset_bytes[2]]);
-        let size = {
-            let mut size_bytes = [0; 2];
-            ips.read_exact(&mut size_bytes).map_err(Error::IO)?;
-            u16::from_be_bytes(size_bytes)
-        };
+        let offset = offset_bytes.as_slice().read_u24::<BE>().unwrap();
+        let size = ips.read_u16::<BE>().map_err(Error::IO)?;
         if size > 0 {
             let data = {
                 let mut data_bytes = SmallVec::from_elem(0, size as usize);
@@ -161,20 +158,11 @@ fn parse_ips_record<T: io::Read>(mut ips: T) -> Result<Option<Record>> {
             };
             Ok(Some(Record::Normal { offset, data }))
         } else {
-            let rle_size = {
-                let mut rle_size_bytes = [0; 2];
-                ips.read_exact(&mut rle_size_bytes).map_err(Error::IO)?;
-                u16::from_be_bytes(rle_size_bytes)
-            };
-            let data = {
-                let mut data = 0;
-                ips.read_exact(slice::from_mut(&mut data))
-                    .map_err(Error::IO)?;
-                data
-            };
+            let size = ips.read_u16::<BE>().map_err(Error::IO)?;
+            let data = ips.read_u8().map_err(Error::IO)?;
             Ok(Some(Record::RLE {
                 offset,
-                size: rle_size,
+                size,
                 data,
             }))
         }
