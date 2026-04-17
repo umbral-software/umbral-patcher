@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf}; 
+use std::path::{Path, PathBuf};
 
 use crate::{PatchFormat, extension_to_format, generate_output_name};
 
@@ -8,7 +8,7 @@ fn format() {
 
     assert_eq!(
         extension_to_format(Path::new(INPUT)),
-        Some(PatchFormat::IPS)
+        Some(PatchFormat::Ips)
     )
 }
 

@@ -3,7 +3,9 @@ use crate::{Error, Result, ips};
 #[test]
 fn parse_file() -> Result<()> {
     let ips = b"PATCH\x67\x67\x67\x00\x03\xFF\xFF\xFF\xDE\xAD\xBB\x00\x00\x69\x96\xAAEOF";
-    let record = ips::File::parse(ips.as_slice())?.into_iter().collect::<Vec<_>>();
+    let record = ips::File::parse(ips.as_slice())?
+        .into_iter()
+        .collect::<Vec<_>>();
     assert_eq!(
         record,
         vec![

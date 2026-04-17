@@ -1,5 +1,7 @@
 use std::{
-    error, fmt::{Debug, Display}, io, result
+    error,
+    fmt::{Debug, Display},
+    io, result,
 };
 
 pub mod ips;

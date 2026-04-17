@@ -44,11 +44,7 @@ impl Record {
             } else {
                 let size = ips.read_u16::<BE>()?;
                 let data = ips.read_u8()?;
-                Ok(Some(Record::RLE {
-                    offset,
-                    size,
-                    data,
-                }))
+                Ok(Some(Record::RLE { offset, size, data }))
             }
         }
     }
@@ -106,7 +102,7 @@ impl Debug for Record {
 
 #[derive(Default, Debug)]
 pub struct File {
-    records: Vec<Record>
+    records: Vec<Record>,
 }
 
 impl File {
@@ -126,7 +122,7 @@ impl File {
             records.push(record);
         }
 
-        Ok(Self{ records })        
+        Ok(Self { records })
     }
 
     pub fn apply(&self, data: &mut Vec<u8>) {
