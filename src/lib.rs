@@ -4,7 +4,9 @@ use std::{
     io, result,
 };
 
+pub mod bps;
 pub mod ips;
+pub mod ups;
 
 // Pretty arbitary size choice, but improves perf a lot over a std::vec
 const INLINE_DATA_SIZE: usize = 64;

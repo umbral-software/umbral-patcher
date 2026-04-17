@@ -100,7 +100,7 @@ impl Debug for Record {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Clone, Default, Debug)]
 pub struct File {
     records: Vec<Record>,
 }

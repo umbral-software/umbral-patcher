@@ -4,7 +4,7 @@ use std::fs::{self, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::result::Result;
-use umbral_patcher::ips;
+use umbral_patcher::{bps, ips, ups};
 
 #[cfg(test)]
 mod tests;
@@ -61,11 +61,18 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut out: File = File::create_new(&output)?;
 
     match format {
+        PatchFormat::Bps => {
+            let patchset = bps::File::parse(patch)?;
+            patchset.apply(&mut data);
+        },
         PatchFormat::Ips => {
             let patchset = ips::File::parse(patch)?;
             patchset.apply(&mut data);
         }
-        _ => todo!(),
+        PatchFormat::Ups => {
+            let patchset = ups::File::parse(patch)?;
+            patchset.apply(&mut data);
+        }
     }
 
     out.write_all(&data)?;
