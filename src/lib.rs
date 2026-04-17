@@ -118,7 +118,7 @@ pub fn apply_record(data: &mut Vec<u8>, record: Record) -> Result<()> {
     Ok(())
 }
 
-pub fn parse_ips<T: io::Read>(mut ips: T) -> Result<impl Iterator<Item = Record>> {
+pub fn parse_ips<T: io::Read>(mut ips: T) -> Result<impl IntoIterator<Item = Record>> {
     let header = {
         let mut header = [0; IPS_HEADER.len()];
         ips.read_exact(&mut header).map_err(Error::IO)?;
@@ -134,7 +134,7 @@ pub fn parse_ips<T: io::Read>(mut ips: T) -> Result<impl Iterator<Item = Record>
         records.push(record);
     }
 
-    Ok(records.into_iter())
+    Ok(records)
 }
 
 fn parse_ips_record<T: io::Read>(mut ips: T) -> Result<Option<Record>> {
