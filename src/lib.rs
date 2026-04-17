@@ -4,7 +4,7 @@ use std::{
     io, result,
 };
 
-use byteorder::{BE, ReadBytesExt};
+use byteorder::{BE, ByteOrder, ReadBytesExt};
 use smallvec::SmallVec;
 
 // Pretty arbitary size choice, but improves perf a lot over a std::vec
@@ -146,7 +146,7 @@ fn parse_ips_record<T: io::Read>(mut ips: T) -> Result<Option<Record>> {
     if offset_bytes == IPS_EOF {
         Ok(None)
     } else {
-        let offset = offset_bytes.as_slice().read_u24::<BE>().unwrap();
+        let offset = BE::read_u24(&offset_bytes);
         let size = ips.read_u16::<BE>().map_err(Error::IO)?;
         if size > 0 {
             let data = {
