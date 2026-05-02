@@ -1,10 +1,8 @@
-use std::{fmt::Debug, io, vec};
 use crate::Result;
+use std::{fmt::Debug, io, vec};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Record {
-
-}
+pub enum Record {}
 
 impl Record {
     fn parse<T: io::Read>(mut ups: T) -> Self {

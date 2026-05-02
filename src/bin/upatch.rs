@@ -64,7 +64,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         PatchFormat::Bps => {
             let patchset = bps::File::parse(patch)?;
             patchset.apply(&mut data);
-        },
+        }
         PatchFormat::Ips => {
             let patchset = ips::File::parse(patch)?;
             patchset.apply(&mut data);
