@@ -112,8 +112,8 @@ pub struct File {
 
     records: Vec<Record>,
 
-    input_crc: u32,
-    output_crc: u32,
+    input_checksum: u32,
+    output_checksum: u32,
 }
 
 impl File {
@@ -139,28 +139,26 @@ impl File {
             .read_uvar()?
             .try_into()
             .map_err(|_| Error::VariableIntegerOverflow("output filesize"))?;
-
         let record_start = ups.stream_position()?;
+
         ups.seek(io::SeekFrom::End(-12))?;
         let record_end = ups.stream_position()?;
-
-        let input_crc = ups.read_u32::<LE>()?;
-        let output_crc = ups.read_u32::<LE>()?;
-        let crc_end = ups.stream_position()?;
-        let patch_crc = ups.read_u32::<LE>()?;
+        let input_checksum = ups.read_u32::<LE>()?;
+        let output_checksum = ups.read_u32::<LE>()?;
+        let checksum_end = ups.stream_position()?;
+        let patch_checksum = ups.read_u32::<LE>()?;
 
         ups.seek(io::SeekFrom::Start(0))?;
-        let actual_crc = crc32_length(&mut ups, Some(crc_end as usize))?;
+        let actual_checksum = crc32_length(&mut ups, Some(checksum_end as usize))?;
 
-        if patch_crc != actual_crc {
+        if patch_checksum != actual_checksum {
             return Err(Error::InvalidInputChecksum {
-                expected: patch_crc,
-                actual: actual_crc,
+                expected: patch_checksum,
+                actual: actual_checksum,
             });
         }
 
         ups.seek(io::SeekFrom::Start(record_start))?;
-
         let mut records = Vec::new();
         while ups.stream_position()? < record_end {
             let record = Record::parse(&mut ups)?;
@@ -174,8 +172,8 @@ impl File {
             input_size,
             output_size,
             records,
-            input_crc,
-            output_crc,
+            input_checksum,
+            output_checksum,
         })
     }
 
@@ -194,15 +192,15 @@ impl File {
         }
 
         input.seek(io::SeekFrom::Start(0))?;
-        let input_crc = crc32(&mut input)?;
-        if self.input_crc != input_crc {
+        let input_checksum = crc32(&mut input)?;
+        if self.input_checksum != input_checksum {
             return Err(Error::InvalidInputChecksum {
-                expected: self.input_crc,
-                actual: input_crc,
+                expected: self.input_checksum,
+                actual: input_checksum,
             });
         }
-        input.seek(io::SeekFrom::Start(0))?;
 
+        input.seek(io::SeekFrom::Start(0))?;
         for record in self.records.iter() {
             record.apply(&mut input, &mut output)?;
         }
@@ -214,12 +212,13 @@ impl File {
                 actual: output_size,
             });
         }
+
         output.seek(io::SeekFrom::Start(0))?;
-        let output_crc = crc32(&mut output)?;
-        if self.output_crc != output_crc {
+        let output_checksum = crc32(&mut output)?;
+        if self.output_checksum != output_checksum {
             return Err(Error::InvalidOutputChecksum {
-                expected: self.output_crc,
-                actual: output_crc,
+                expected: self.output_checksum,
+                actual: output_checksum,
             });
         }
 

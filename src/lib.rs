@@ -2,6 +2,7 @@ use std::{
     error,
     fmt::{Debug, Display},
     io, result,
+    string::FromUtf8Error,
 };
 
 use crc::{CRC_32_ISO_HDLC, Crc};
@@ -24,10 +25,12 @@ pub enum Error {
     InvalidHeader,
     InvalidInputChecksum { expected: u32, actual: u32 },
     InvalidInputSize { expected: u64, actual: u64 },
+    InvalidMetadata(FromUtf8Error),
     InvalidOutputChecksum { expected: u32, actual: u32 },
     InvalidOutputSize { expected: u64, actual: u64 },
     IO(io::Error),
     VariableIntegerOverflow(&'static str),
+    ZeroSizedHunk,
 }
 
 impl Display for Error {
@@ -42,6 +45,7 @@ impl Display for Error {
                 f,
                 "Input size invalid; Expected: {expected}, Actual: {actual}"
             ),
+            Error::InvalidMetadata(inner) => write!(f, "Metadata is not valid \"{}\"", inner),
             Error::InvalidOutputChecksum { expected, actual } => write!(
                 f,
                 "Output checksum invalid; expected: {expected:x}, Actual: {actual:x}"
@@ -55,6 +59,7 @@ impl Display for Error {
                 f,
                 "A variable-length integer for '{what}' could not be represented"
             ),
+            Error::ZeroSizedHunk => write!(f, "A patch hunk was zero-sized"),
         }
     }
 }
@@ -62,6 +67,7 @@ impl Display for Error {
 impl error::Error for Error {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         match self {
+            Error::InvalidMetadata(inner) => Some(inner),
             Error::IO(inner) => Some(inner),
             _ => None,
         }

@@ -1,6 +1,8 @@
+use std::num::NonZero;
+
 use smallvec::SmallVec;
 
-use crate::{Error, INLINE_DATA_SIZE, Result, crc32, ips, ups};
+use crate::{INLINE_DATA_SIZE, Result, crc32, ips, ups};
 
 fn ups_encode(mut offset: usize) -> SmallVec<[u8; INLINE_DATA_SIZE]> {
     let mut ret = SmallVec::new();
@@ -42,7 +44,7 @@ fn ips_parse_file() -> Result<()> {
             },
             ips::Record::RLE {
                 offset: 0xDEADBB,
-                size: 0x6996,
+                size: NonZero::new(0x6996).unwrap(),
                 data: 0xAA
             }
         ]
@@ -53,7 +55,7 @@ fn ips_parse_file() -> Result<()> {
 #[test]
 fn ips_parse_single_normal() -> Result<()> {
     let ips = b"\x42\x69\x00\x00\x02\x00\x00";
-    let record = ips::Record::parse(ips.as_slice()).map_err(Error::IO)?;
+    let record = ips::Record::parse(ips.as_slice())?;
     assert_eq!(
         record,
         Some(ips::Record::Normal {
@@ -67,12 +69,12 @@ fn ips_parse_single_normal() -> Result<()> {
 #[test]
 fn ips_parse_single_rle() -> Result<()> {
     let ips = b"\x42\x69\x00\x00\x00\x04\x20\xFF";
-    let record = ips::Record::parse(ips.as_slice()).map_err(Error::IO)?;
+    let record = ips::Record::parse(ips.as_slice())?;
     assert_eq!(
         record,
         Some(ips::Record::RLE {
             offset: 0x426900,
-            size: 0x420,
+            size: NonZero::new(0x420).unwrap(),
             data: 0xFF
         })
     );
