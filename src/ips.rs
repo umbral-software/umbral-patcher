@@ -23,16 +23,11 @@ pub enum Record {
 #[allow(clippy::len_without_is_empty)] // The concept of 'empty' doesn't exist for a single record
 impl Record {
     pub(crate) fn parse<T: io::Read>(mut ips: T) -> io::Result<Option<Record>> {
-        let offset_bytes = {
-            let mut offset_bytes = [0; 3];
-            ips.read_exact(&mut offset_bytes)?;
-            offset_bytes
-        };
+        let offset = ips.read_u24::<BE>()?;
 
-        if offset_bytes == IPS_EOF {
+        if offset == BE::read_u24(IPS_EOF) {
             Ok(None)
         } else {
-            let offset = BE::read_u24(&offset_bytes);
             let size = ips.read_u16::<BE>()?;
             if size > 0 {
                 let data = {
