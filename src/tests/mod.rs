@@ -1,6 +1,6 @@
 use smallvec::SmallVec;
 
-use crate::{Error, INLINE_DATA_SIZE, Result, ips, ups};
+use crate::{Error, INLINE_DATA_SIZE, Result, crc32, ips, ups};
 
 fn ups_encode(mut offset: usize) -> SmallVec<[u8; INLINE_DATA_SIZE]> {
     let mut ret = SmallVec::new();
@@ -15,6 +15,18 @@ fn ups_encode(mut offset: usize) -> SmallVec<[u8; INLINE_DATA_SIZE]> {
         offset -= 1;
     }
     ret
+}
+
+#[test]
+fn crc32_check() -> Result<()> {
+    assert_eq!(0x00000000, crc32([].as_slice())?);
+    assert_eq!(0xcbf43926, crc32(b"123456789".as_slice())?);
+    assert_eq!(
+        0x414fa339,
+        crc32(b"The quick brown fox jumps over the lazy dog".as_slice())?
+    );
+
+    Ok(())
 }
 
 #[test]
@@ -72,7 +84,7 @@ fn ups_read_uvar() -> Result<()> {
     use ups::UpsReadExtensions;
 
     for i in [0, 1, 0x7F, 0x80, 0xFFFF, usize::MAX] {
-        assert_eq!(i, ups_encode(i).as_slice().read_uvar()?);
+        assert_eq!(i as u128, ups_encode(i).as_slice().read_uvar()?);
     }
 
     Ok(())

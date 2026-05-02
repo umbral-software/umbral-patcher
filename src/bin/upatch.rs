@@ -1,9 +1,7 @@
 use clap::{Parser, ValueEnum};
-use std::error::Error;
 use std::fs::File;
 use std::path::{Path, PathBuf};
-use std::result::Result;
-use umbral_patcher::{bps, ips, ups};
+use umbral_patcher::{Result, bps, ips, ups};
 
 #[cfg(test)]
 mod tests;
@@ -43,7 +41,7 @@ fn generate_output_name(input: &Path, ips: &Path) -> Option<PathBuf> {
     Some(ret)
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn real_main() -> Result<()> {
     let args = Args::parse();
     let format = args
         .format
@@ -74,4 +72,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     Ok(())
+}
+
+fn main() {
+    match real_main() {
+        Ok(_) => {}
+        Err(e) => println!("Error: {e}"),
+    }
 }

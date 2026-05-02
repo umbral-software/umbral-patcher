@@ -1,7 +1,7 @@
 use byteorder::{LE, ReadBytesExt};
 use smallvec::{SmallVec, smallvec};
 
-use crate::{Error, INLINE_DATA_SIZE, Result};
+use crate::{Error, INLINE_DATA_SIZE, Result, crc32, crc32_length};
 use std::{
     fmt::Debug,
     io::{self, Read, Seek},
@@ -11,7 +11,7 @@ use std::{
 const UPS_HEADER: &[u8] = b"UPS1";
 
 #[allow(non_camel_case_types)]
-type uvar = usize;
+type uvar = u128;
 
 pub(crate) trait UpsReadExtensions {
     fn read_or_zero(&mut self, buf: &mut [u8]) -> io::Result<()>;
@@ -56,13 +56,16 @@ impl<T: io::Read> UpsReadExtensions for T {
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Record {
-    skip: uvar,
+    skip: usize,
     data: SmallVec<[u8; INLINE_DATA_SIZE]>,
 }
 
 impl Record {
-    fn parse<T: io::Read>(mut ups: T) -> io::Result<Self> {
-        let skip = ups.read_uvar()?;
+    fn parse<T: io::Read>(mut ups: T) -> Result<Self> {
+        let skip = ups
+            .read_uvar()?
+            .try_into()
+            .map_err(|_| Error::VariableIntegerOverflow("Record 'skip' size"))?;
         let mut data = SmallVec::new();
         loop {
             let value = ups.read_u8()?;
@@ -104,8 +107,8 @@ impl Debug for Record {
 
 #[derive(Clone, Default, Debug)]
 pub struct File {
-    input_size: uvar,
-    output_size: uvar,
+    input_size: u64,
+    output_size: u64,
 
     records: Vec<Record>,
 
@@ -128,8 +131,14 @@ impl File {
             return Err(Error::InvalidHeader);
         }
 
-        let input_size = ups.read_uvar()?;
-        let output_size = ups.read_uvar()?;
+        let input_size = ups
+            .read_uvar()?
+            .try_into()
+            .map_err(|_| Error::VariableIntegerOverflow("input filesize"))?;
+        let output_size = ups
+            .read_uvar()?
+            .try_into()
+            .map_err(|_| Error::VariableIntegerOverflow("output filesize"))?;
 
         let record_start = ups.stream_position()?;
         ups.seek(io::SeekFrom::End(-12))?;
@@ -137,7 +146,19 @@ impl File {
 
         let input_crc = ups.read_u32::<LE>()?;
         let output_crc = ups.read_u32::<LE>()?;
+        let crc_end = ups.stream_position()?;
         let patch_crc = ups.read_u32::<LE>()?;
+
+        ups.seek(io::SeekFrom::Start(0))?;
+        let actual_crc = crc32_length(&mut ups, Some(crc_end as usize))?;
+
+        if patch_crc != actual_crc {
+            return Err(Error::InvalidInputChecksum {
+                expected: patch_crc,
+                actual: actual_crc,
+            });
+        }
+
         ups.seek(io::SeekFrom::Start(record_start))?;
 
         let mut records = Vec::new();
@@ -158,10 +179,50 @@ impl File {
         })
     }
 
-    pub fn apply<T: io::Read, U: io::Write>(&self, mut input: T, mut output: U) -> io::Result<()> {
+    pub fn apply<T: io::Read + io::Seek, U: io::Read + io::Write + io::Seek>(
+        &self,
+        mut input: T,
+        mut output: U,
+    ) -> Result<()> {
+        input.seek(io::SeekFrom::End(0))?;
+        let input_size = input.stream_position()?;
+        if self.input_size != input_size {
+            return Err(Error::InvalidInputSize {
+                expected: self.input_size,
+                actual: input_size,
+            });
+        }
+
+        input.seek(io::SeekFrom::Start(0))?;
+        let input_crc = crc32(&mut input)?;
+        if self.input_crc != input_crc {
+            return Err(Error::InvalidInputChecksum {
+                expected: self.input_crc,
+                actual: input_crc,
+            });
+        }
+        input.seek(io::SeekFrom::Start(0))?;
+
         for record in self.records.iter() {
             record.apply(&mut input, &mut output)?;
         }
+
+        let output_size = output.stream_position()?;
+        if self.output_size != output_size {
+            return Err(Error::InvalidOutputSize {
+                expected: self.output_size,
+                actual: output_size,
+            });
+        }
+        output.seek(io::SeekFrom::Start(0))?;
+        let output_crc = crc32(&mut output)?;
+        if self.output_crc != output_crc {
+            return Err(Error::InvalidOutputChecksum {
+                expected: self.output_crc,
+                actual: output_crc,
+            });
+        }
+
         Ok(())
     }
 }

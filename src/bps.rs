@@ -28,7 +28,7 @@ impl File {
         todo!()
     }
 
-    pub fn apply<T: io::Read + io::Seek, U: io::Write + io::Seek>(
+    pub fn apply<T: io::Read + io::Seek, U: io::Read + io::Write + io::Seek>(
         &self,
         mut input: T,
         mut output: U,
