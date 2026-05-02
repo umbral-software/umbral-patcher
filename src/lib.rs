@@ -8,8 +8,7 @@ pub mod bps;
 pub mod ips;
 pub mod ups;
 
-// Pretty arbitary size choice, but improves perf a lot over a std::vec
-const INLINE_DATA_SIZE: usize = 64;
+const INLINE_DATA_SIZE: usize = 16;
 
 #[cfg(test)]
 mod tests;
