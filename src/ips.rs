@@ -104,7 +104,7 @@ impl File {
     pub fn parse<T: io::Read>(mut ips: T) -> Result<Self> {
         let header = {
             let mut header = [0; IPS_HEADER.len()];
-            ips.read_exact(&mut header).map_err(Error::IO)?;
+            ips.read_exact(&mut header)?;
             header
         };
         if header != IPS_HEADER {
@@ -112,8 +112,7 @@ impl File {
         }
 
         let mut records = Vec::new();
-
-        while let Some(record) = Record::parse(&mut ips).map_err(Error::IO)? {
+        while let Some(record) = Record::parse(&mut ips)? {
             records.push(record);
         }
 

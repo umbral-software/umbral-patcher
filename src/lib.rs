@@ -39,3 +39,9 @@ impl error::Error for Error {
         }
     }
 }
+
+impl From<io::Error> for Error {
+    fn from(value: io::Error) -> Self {
+        Error::IO(value)
+    }
+}
