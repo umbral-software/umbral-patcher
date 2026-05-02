@@ -1,4 +1,4 @@
-use std::{fmt::Debug, io, vec};
+use std::{fmt::Debug, io};
 
 use crate::{Error, Result};
 use byteorder::{BE, ByteOrder, ReadBytesExt};
@@ -97,7 +97,7 @@ impl Debug for Record {
 
 #[derive(Clone, Default, Debug)]
 pub struct File {
-    records: Vec<Record>,
+    pub(crate) records: Vec<Record>,
 }
 
 impl File {
@@ -119,19 +119,16 @@ impl File {
         Ok(Self { records })
     }
 
-    pub fn apply(&self, data: &mut Vec<u8>) {
+    pub fn apply<T: io::Read, U: io::Write>(&self, mut input: T, mut output: U) -> io::Result<()> {
+        let mut data = Vec::new();
+        input.read_to_end(&mut data)?;
+
         for record in &self.records {
-            record.apply(data);
+            record.apply(&mut data);
         }
-    }
-}
 
-impl IntoIterator for File {
-    type Item = Record;
+        output.write_all(&data)?;
 
-    type IntoIter = vec::IntoIter<Record>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.records.into_iter()
+        Ok(())
     }
 }

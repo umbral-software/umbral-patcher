@@ -1,5 +1,5 @@
 use crate::Result;
-use std::{fmt::Debug, io, vec};
+use std::{fmt::Debug, io};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Record {}
@@ -9,7 +9,11 @@ impl Record {
         todo!()
     }
 
-    fn apply(&self, data: &mut Vec<u8>) {
+    fn apply<T: io::Read + io::Seek, U: io::Write + io::Seek>(
+        &self,
+        mut input: T,
+        mut output: U,
+    ) -> io::Result<()> {
         todo!()
     }
 }
@@ -20,23 +24,18 @@ pub struct File {
 }
 
 impl File {
-    pub fn parse<T: io::Read>(mut bps: T) -> Result<Self> {
+    pub fn parse<T: io::Read + io::Seek>(mut bps: T) -> Result<Self> {
         todo!()
     }
 
-    pub fn apply(&self, data: &mut Vec<u8>) {
-        for record in &self.records {
-            record.apply(data);
+    pub fn apply<T: io::Read + io::Seek, U: io::Write + io::Seek>(
+        &self,
+        mut input: T,
+        mut output: U,
+    ) -> io::Result<()> {
+        for record in self.records.iter() {
+            record.apply(&mut input, &mut output)?;
         }
-    }
-}
-
-impl IntoIterator for File {
-    type Item = Record;
-
-    type IntoIter = vec::IntoIter<Record>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.records.into_iter()
+        Ok(())
     }
 }

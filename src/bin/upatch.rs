@@ -1,7 +1,6 @@
 use clap::{Parser, ValueEnum};
 use std::error::Error;
-use std::fs::{self, File};
-use std::io::Write;
+use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::result::Result;
 use umbral_patcher::{bps, ips, ups};
@@ -55,27 +54,24 @@ fn main() -> Result<(), Box<dyn Error>> {
         .or_else(|| generate_output_name(&args.input, &args.patch))
         .expect("Could not deduce output file name");
 
-    let mut data = fs::read(args.input)?;
-    let patch = File::open(args.patch)?;
-
-    let mut out: File = File::create_new(&output)?;
+    let in_file = File::open(args.input)?;
+    let patch_file = File::open(args.patch)?;
+    let out_file: File = File::create_new(&output)?;
 
     match format {
         PatchFormat::Bps => {
-            let patchset = bps::File::parse(patch)?;
-            patchset.apply(&mut data);
+            let patchset = bps::File::parse(patch_file)?;
+            patchset.apply(in_file, out_file)?;
         }
         PatchFormat::Ips => {
-            let patchset = ips::File::parse(patch)?;
-            patchset.apply(&mut data);
+            let patchset = ips::File::parse(patch_file)?;
+            patchset.apply(in_file, out_file)?;
         }
         PatchFormat::Ups => {
-            let patchset = ups::File::parse(patch)?;
-            patchset.apply(&mut data);
+            let patchset = ups::File::parse(patch_file)?;
+            patchset.apply(in_file, out_file)?;
         }
     }
-
-    out.write_all(&data)?;
 
     Ok(())
 }
