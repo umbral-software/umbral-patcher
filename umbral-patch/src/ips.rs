@@ -57,7 +57,7 @@ impl Record {
 
     /// Applies a single record
     /// # Errors
-    /// `IO` if any `io::Error` is generated from `output`
+    /// * `IO` if any `io::Error` is generated from `output`
     pub fn apply<T: io::Write + io::Seek>(&self, mut output: T) -> io::Result<()> {
         output.seek(io::SeekFrom::Start(self.offset().into()))?;
 
@@ -120,9 +120,9 @@ pub struct File {
 impl File {
     /// Parse an IPS file
     /// # Errors
-    /// `InvalidHeader` if the patch header is invalid
-    /// `ZeroSizedHunk` if a zero-length record is parsed
-    /// `IO` if any `io::Error` is generated from accessing `ips`
+    /// * `InvalidHeader` if the patch header is invalid
+    /// * `ZeroSizedHunk` if a zero-length record is parsed
+    /// * `IO` if any `io::Error` is generated from accessing `ips`
     pub fn parse<T: io::Read>(mut ips: T) -> Result<Self> {
         let header = {
             let mut header = [0; IPS_HEADER.len()];
@@ -143,8 +143,8 @@ impl File {
 
     /// Apply the contained IPS records to an input file and generate a patched file
     /// # Errors
-    /// `IO` if any `io::Error` is generated from accessing `input` or `output`
-    /// Any error returned by `Record::apply`
+    /// * `IO` if any `io::Error` is generated from accessing `input` or `output`
+    /// * Any error returned by `Record::apply`
     pub fn apply<T: io::Read, U: io::Write + io::Seek>(&self, mut input: T, mut output: U) -> io::Result<()> {
         io::copy(&mut input, &mut output)?;
         output.seek(io::SeekFrom::Start(0))?;

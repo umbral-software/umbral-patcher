@@ -71,8 +71,8 @@ impl Record {
 
     /// Applies a single record
     /// # Errors
-    /// `VariableIntegerOverflow` if a RLE extends more than `usize::MAX` bytes beyond outputOffset
-    /// `IO` if any `io::Error` is generated from `source` or `target`
+    /// * `VariableIntegerOverflow` if a RLE extends more than `usize::MAX` bytes beyond outputOffset
+    /// * `IO` if any `io::Error` is generated from `source` or `target`
     pub fn apply<T: io::Read + io::Seek, U: io::Read + io::Write + io::Seek>(
         &self,
         mut source: T,
@@ -160,12 +160,12 @@ pub struct File {
 impl File {
     /// Parse a BPS file
     /// # Errors
-    /// `InvalidHeader` if the patch header is invalid
-    /// `VariableIntegerOverflow` if a filesize is larger than u64 or a record offset is larger than i64
-    /// `InvalidInputChecksum` if the patch checksum inside the patch does not match the actual BPS file
-    /// `InvalidInputSize` if the patch size inside the patch does not match the actual BPS file's size
-    /// `InvalidMetadata` if the metadata is not a UTF-8 string
-    /// `IO` if any `io::Error` is generated from accessing `bps`
+    /// * `InvalidHeader` if the patch header is invalid
+    /// * `VariableIntegerOverflow` if a filesize is larger than u64 or a record offset is larger than i64
+    /// * `InvalidInputChecksum` if the patch checksum inside the patch does not match the actual BPS file
+    /// * `InvalidInputSize` if the patch size inside the patch does not match the actual BPS file's size
+    /// * `InvalidMetadata` if the metadata is not a UTF-8 string
+    /// * `IO` if any `io::Error` is generated from accessing `bps`
     pub fn parse<T: io::Read + io::Seek>(mut bps: T) -> Result<Self> {
         let header = {
             let mut header = [0; BPS_HEADER.len()];
@@ -233,12 +233,12 @@ impl File {
 
     /// Apply the contained BPS records to an input file and generate a patched file
     /// # Errors
-    /// `InvalidInputChecksum` if the input checksum inside the patch does not match the actual input file
-    /// `InvalidInputSize` if the input size inside the patch does not match the actual input file's size
-    /// `InvalidOutputChecksum` if the output checksum inside the patch does not match the resulting output file
-    /// `InvalidOutputSize` if the output size inside the patch does not match the actual output file's size
-    /// `IO` if any `io::Error` is generated from accessing `source` or `target`
-    /// Any error returned by `Record::apply`
+    /// * `InvalidInputChecksum` if the input checksum inside the patch does not match the actual input file
+    /// * `InvalidInputSize` if the input size inside the patch does not match the actual input file's size
+    /// * `InvalidOutputChecksum` if the output checksum inside the patch does not match the resulting output file
+    /// * `InvalidOutputSize` if the output size inside the patch does not match the actual output file's size
+    /// * `IO` if any `io::Error` is generated from accessing `source` or `target`
+    /// * Any error returned by `Record::apply`
     pub fn apply<T: io::Read + io::Seek, U: io::Read + io::Write + io::Seek>(
         &self,
         mut source: T,
