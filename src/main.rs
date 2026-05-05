@@ -2,7 +2,7 @@ use clap::{Parser, ValueEnum};
 use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
-use umbral_patcher::{Result, bps, ips, ups};
+use umbral_patch::{Result, bps, ips, ups};
 
 #[cfg(test)]
 mod tests;
