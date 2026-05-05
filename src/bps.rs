@@ -1,7 +1,7 @@
 use byteorder::{LE, ReadBytesExt};
 use smallvec::{SmallVec, smallvec};
 
-use crate::{Error, INLINE_DATA_SIZE, Result, crc32, crc32_length};
+use crate::{Error, INLINE_DATA_SIZE, Result, UvarReadExtensions, crc32, crc32_length};
 use std::{
     borrow::Cow,
     fmt::Debug,
@@ -13,11 +13,12 @@ const BPS_HEADER: &[u8] = b"BPS1";
 
 #[allow(non_camel_case_types)]
 type ivar = i128;
-#[allow(non_camel_case_types)]
-type uvar = u128;
 
 pub(crate) trait BpsReadExtensions {
-    fn read_uvar(&mut self) -> io::Result<uvar>;
+    fn read_ivar(&mut self) -> io::Result<ivar>;
+}
+
+impl<T: UvarReadExtensions> BpsReadExtensions for T {
     fn read_ivar(&mut self) -> io::Result<ivar> {
         let raw = self.read_uvar()?;
         let bit = raw & 0x1;
@@ -27,23 +28,6 @@ pub(crate) trait BpsReadExtensions {
         } else {
             Ok(magnitude)
         }
-    }
-}
-
-impl<T: io::Read> BpsReadExtensions for T {
-    fn read_uvar(&mut self) -> io::Result<uvar> {
-        let mut data = 0;
-        let mut shift = 1;
-        loop {
-            let x = self.read_u8()?;
-            data += uvar::from(x & 0x7F) * shift;
-            if 0 != (x & 0x80) {
-                break;
-            }
-            shift <<= 7;
-            data += shift;
-        }
-        Ok(data)
     }
 }
 
@@ -69,11 +53,13 @@ impl Record {
             }
             2 => Self::SourceCopy {
                 length,
-                offset: i64::try_from(bps.read_ivar()?).map_err(|_| Error::VariableIntegerOverflow("record offset"))?,
+                offset: i64::try_from(bps.read_ivar()?)
+                    .map_err(|_| Error::VariableIntegerOverflow("record offset"))?,
             },
             3 => Self::TargetCopy {
                 length,
-                offset: i64::try_from(bps.read_ivar()?).map_err(|_| Error::VariableIntegerOverflow("record offset"))?,
+                offset: i64::try_from(bps.read_ivar()?)
+                    .map_err(|_| Error::VariableIntegerOverflow("record offset"))?,
             },
             _ => unreachable!(),
         };
@@ -119,7 +105,9 @@ impl Record {
                 for i in 0..length.into() {
                     let read_pos = start_pos + i as u64;
                     if read_pos >= eof {
-                        buf.push(buf[usize::try_from(read_pos - eof).expect("RLE TargetCopy overflow")]);
+                        buf.push(
+                            buf[usize::try_from(read_pos - eof).expect("RLE TargetCopy overflow")],
+                        );
                         target.seek_relative(1)?;
                     } else {
                         buf.push(target.read_u8()?);

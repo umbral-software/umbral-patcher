@@ -5,6 +5,7 @@ use std::{
     string::FromUtf8Error,
 };
 
+use byteorder::ReadBytesExt;
 use crc::{CRC_32_ISO_HDLC, Crc};
 
 pub mod bps;
@@ -18,6 +19,30 @@ static CRC32: Crc<u32> = Crc::<u32>::new(&CRC_32_ISO_HDLC);
 mod tests;
 
 pub type Result<T> = result::Result<T, Error>;
+
+#[allow(non_camel_case_types)]
+type uvar = u128;
+
+trait UvarReadExtensions {
+    fn read_uvar(&mut self) -> io::Result<uvar>;
+}
+
+impl<T: io::Read> UvarReadExtensions for T {
+    fn read_uvar(&mut self) -> io::Result<uvar> {
+        let mut result = 0;
+        let mut shift = 0;
+        loop {
+            let octet = self.read_u8()?;
+            if 0 != octet & 0x80 {
+                result += uvar::from(octet & 0x7F) << shift;
+                break;
+            }
+            result += uvar::from(octet | 0x80) << shift;
+            shift += 7;
+        }
+        Ok(result)
+    }
+}
 
 #[derive(Debug)]
 #[non_exhaustive]

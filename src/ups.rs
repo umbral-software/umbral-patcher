@@ -1,7 +1,7 @@
 use byteorder::{LE, ReadBytesExt};
 use smallvec::{SmallVec, smallvec};
 
-use crate::{Error, INLINE_DATA_SIZE, Result, crc32, crc32_length};
+use crate::{Error, INLINE_DATA_SIZE, Result, UvarReadExtensions, crc32, crc32_length};
 use std::{
     fmt::Debug,
     io::{self, Read, Seek},
@@ -10,12 +10,8 @@ use std::{
 
 const UPS_HEADER: &[u8] = b"UPS1";
 
-#[allow(non_camel_case_types)]
-type uvar = u128;
-
 pub(crate) trait UpsReadExtensions {
     fn read_or_zero(&mut self, buf: &mut [u8]) -> io::Result<()>;
-    fn read_uvar(&mut self) -> io::Result<uvar>;
 }
 
 impl<T: io::Read> UpsReadExtensions for T {
@@ -36,21 +32,6 @@ impl<T: io::Read> UpsReadExtensions for T {
                 Err(e) => return Err(e),
             }
         }
-    }
-
-    fn read_uvar(&mut self) -> io::Result<uvar> {
-        let mut result = 0;
-        let mut shift = 0;
-        loop {
-            let octet = self.read_u8()?;
-            if 0 != octet & 0x80 {
-                result += uvar::from(octet & 0x7F) << shift;
-                break;
-            }
-            result += uvar::from(octet | 0x80) << shift;
-            shift += 7;
-        }
-        Ok(result)
     }
 }
 
