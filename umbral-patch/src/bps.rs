@@ -115,7 +115,7 @@ impl Record {
 
                 let start_pos = old_pos
                     .checked_add_signed(offset)
-                    .ok_or_else(|| Error::OffsetOverflow("Record::TargetCopy offset"))?;
+                    .ok_or(Error::OffsetOverflow("Record::TargetCopy offset"))?;
                 target.seek(io::SeekFrom::Start(start_pos))?;
 
                 let mut buf: SmallVec<[_; INLINE_DATA_SIZE]> =

@@ -38,12 +38,16 @@ pub trait PatchFile: Sized {
     type Record;
 
     /// Create a `PatchFile` from a `File`
+    /// # Errors
+    /// Any `Error` except `InvalidOutputChecksum` and `InvalidOutputFilesize`
     fn parse(patch: &File) -> Result<Self>;
 
-    /// Apply the contained records to an input `File`` and generate a patched `File``
+    /// Apply the contained records to an input `File` and generate a patched `File`
+    /// # Errors
+    /// Any `Error`
     fn apply(&self, input: &File, output: &mut File) -> Result<()>;
 
-    /// Inspect the records contained in this `PatchFile``
+    /// Inspect the records contained in this `PatchFile`
     fn records(&self) -> impl Iterator<Item = &Self::Record>;
 }
 
