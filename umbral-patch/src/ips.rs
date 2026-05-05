@@ -65,7 +65,7 @@ impl Record {
         if end > data.len() {
             data.resize(end, 0);
         }
-        let slice = data.get_mut(begin..end).unwrap();
+        let slice = &mut data[begin..end];
 
         match self {
             Record::Normal { data: new_data, .. } => {
@@ -81,7 +81,8 @@ impl Record {
     #[must_use]
     pub fn len(&self) -> u16 {
         match self {
-            Record::Normal { data, .. } => u16::try_from(data.len()).unwrap(),
+            #[allow(clippy::cast_possible_truncation)]
+            Record::Normal { data, .. } => data.len() as u16,
             Record::RLE { size, .. } => (*size).into(),
         }
     }
@@ -121,6 +122,10 @@ pub struct File {
 
 impl File {
     /// Parse an IPS file
+    /// # Errors
+    /// `InvalidHeader` if the patch header is invalid
+    /// `ZeroSizedHunk` if a zero-length record is parsed
+    /// `IO` if any `io::Error` is generated from accessing `ips`
     pub fn parse<T: io::Read>(mut ips: T) -> Result<Self> {
         let header = {
             let mut header = [0; IPS_HEADER.len()];
@@ -140,6 +145,8 @@ impl File {
     }
 
     /// Apply the contained IPS records to an input file and generate a patched file
+    /// # Errors
+    /// `IO` if any `io::Error` is generated from accessing `input` or `output`
     pub fn apply<T: io::Read, U: io::Write>(&self, mut input: T, mut output: U) -> io::Result<()> {
         let mut data = Vec::new();
         input.read_to_end(&mut data)?;
