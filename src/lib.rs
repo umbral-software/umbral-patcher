@@ -45,7 +45,7 @@ impl Display for Error {
                 f,
                 "Input size invalid; Expected: {expected}, Actual: {actual}"
             ),
-            Error::InvalidMetadata(inner) => write!(f, "Metadata is not valid \"{}\"", inner),
+            Error::InvalidMetadata(inner) => write!(f, "Metadata is not valid \"{inner}\""),
             Error::InvalidOutputChecksum { expected, actual } => write!(
                 f,
                 "Output checksum invalid; expected: {expected:x}, Actual: {actual:x}"
@@ -84,18 +84,18 @@ fn crc32<T: io::Read>(data: T) -> io::Result<u32> {
     crc32_length(data, None)
 }
 
-fn crc32_length<T: io::Read>(mut data: T, length: Option<usize>) -> io::Result<u32> {
+fn crc32_length<T: io::Read>(mut data: T, length: Option<u64>) -> io::Result<u32> {
     let mut digest = CRC32.digest();
     let mut buf = [0; 4096];
     let mut total_bytes = 0;
     loop {
         let mut bytes = data.read(&mut buf)?;
         if bytes > 0 {
-            total_bytes += bytes;
+            total_bytes += bytes as u64;
             let early_done = if let Some(length) = length
                 && total_bytes > length
             {
-                bytes -= total_bytes - length;
+                bytes -= usize::try_from(total_bytes - length).expect("crc32 length overflow");
                 true
             } else {
                 false

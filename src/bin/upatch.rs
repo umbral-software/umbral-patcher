@@ -76,7 +76,7 @@ fn real_main() -> Result<()> {
 
 fn main() {
     match real_main() {
-        Ok(_) => {}
+        Ok(()) => {}
         Err(e) => println!("Error: {e}"),
     }
 }

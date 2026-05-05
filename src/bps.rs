@@ -21,7 +21,7 @@ pub(crate) trait BpsReadExtensions {
     fn read_ivar(&mut self) -> io::Result<ivar> {
         let raw = self.read_uvar()?;
         let bit = raw & 0x1;
-        let magnitude = (raw >> 1) as i128;
+        let magnitude = (raw >> 1).cast_signed();
         if bit != 0 {
             Ok(-magnitude)
         } else {
@@ -36,7 +36,7 @@ impl<T: io::Read> BpsReadExtensions for T {
         let mut shift = 1;
         loop {
             let x = self.read_u8()?;
-            data += ((x & 0x7F) as uvar) * shift;
+            data += uvar::from(x & 0x7F) * shift;
             if 0 != (x & 0x80) {
                 break;
             }
@@ -69,11 +69,11 @@ impl Record {
             }
             2 => Self::SourceCopy {
                 length,
-                offset: bps.read_ivar()? as i64,
+                offset: i64::try_from(bps.read_ivar()?).map_err(|_| Error::VariableIntegerOverflow("record offset"))?,
             },
             3 => Self::TargetCopy {
                 length,
-                offset: bps.read_ivar()? as i64,
+                offset: i64::try_from(bps.read_ivar()?).map_err(|_| Error::VariableIntegerOverflow("record offset"))?,
             },
             _ => unreachable!(),
         };
@@ -119,7 +119,7 @@ impl Record {
                 for i in 0..length.into() {
                     let read_pos = start_pos + i as u64;
                     if read_pos >= eof {
-                        buf.push(buf[(read_pos - eof) as usize]);
+                        buf.push(buf[usize::try_from(read_pos - eof).expect("RLE TargetCopy overflow")]);
                         target.seek_relative(1)?;
                     } else {
                         buf.push(target.read_u8()?);
@@ -185,7 +185,7 @@ impl File {
         let patch_checksum = bps.read_u32::<LE>()?;
 
         bps.seek(io::SeekFrom::Start(0))?;
-        let actual_checksum = crc32_length(&mut bps, Some(checksum_end as usize))?;
+        let actual_checksum = crc32_length(&mut bps, Some(checksum_end))?;
         if patch_checksum != actual_checksum {
             return Err(Error::InvalidInputChecksum {
                 expected: patch_checksum,
@@ -242,7 +242,7 @@ impl File {
         }
 
         source.seek(io::SeekFrom::Start(0))?;
-        for record in self.records.iter() {
+        for record in &self.records {
             record.apply(&mut source, &mut target)?;
         }
 
@@ -267,6 +267,7 @@ impl File {
         Ok(())
     }
 
+    #[must_use]
     pub fn metadata(&self) -> &str {
         &self.metadata
     }

@@ -23,7 +23,7 @@ fn ivar_encode(data: i128) -> SmallVec<[u8; INLINE_DATA_SIZE]> {
         panic!("Overflow: Attempted to encode i128::MIN as variable-length");
     }
     let sign_bit = if data < 0 { 1 } else { 0 };
-    uvar_encode(((data.abs() as u128) << 1) | sign_bit)
+    uvar_encode((data.unsigned_abs() << 1) | sign_bit)
 }
 
 #[test]

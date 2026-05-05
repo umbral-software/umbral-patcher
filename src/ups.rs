@@ -44,10 +44,10 @@ impl<T: io::Read> UpsReadExtensions for T {
         loop {
             let octet = self.read_u8()?;
             if 0 != octet & 0x80 {
-                result += ((octet & 0x7F) as uvar) << shift;
+                result += uvar::from(octet & 0x7F) << shift;
                 break;
             }
-            result += ((octet | 0x80) as uvar) << shift;
+            result += uvar::from(octet | 0x80) << shift;
             shift += 7;
         }
         Ok(result)
@@ -149,7 +149,7 @@ impl File {
         let patch_checksum = ups.read_u32::<LE>()?;
 
         ups.seek(io::SeekFrom::Start(0))?;
-        let actual_checksum = crc32_length(&mut ups, Some(checksum_end as usize))?;
+        let actual_checksum = crc32_length(&mut ups, Some(checksum_end))?;
 
         if patch_checksum != actual_checksum {
             return Err(Error::InvalidInputChecksum {
@@ -201,7 +201,7 @@ impl File {
         }
 
         input.seek(io::SeekFrom::Start(0))?;
-        for record in self.records.iter() {
+        for record in &self.records {
             record.apply(&mut input, &mut output)?;
         }
 

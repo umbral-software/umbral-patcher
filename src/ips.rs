@@ -66,6 +66,7 @@ impl Record {
         }
     }
 
+    #[must_use]
     pub fn len(&self) -> u16 {
         match self {
             Record::Normal { data, .. } => u16::try_from(data.len()).unwrap(),
@@ -73,6 +74,7 @@ impl Record {
         }
     }
 
+    #[must_use]
     pub fn offset(&self) -> u32 {
         match self {
             Record::Normal { offset, .. } | Record::RLE { offset, .. } => *offset,
