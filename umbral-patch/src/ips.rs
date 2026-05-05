@@ -1,21 +1,29 @@
 use std::{fmt::Debug, io, num::NonZero};
 
 use crate::{Error, Result};
-use byteorder::{BE, ByteOrder, ReadBytesExt};
+use byteorder::{BE, ByteOrder, ReadBytesExt, WriteBytesExt};
 use smallvec::SmallVec;
 
 const IPS_EOF: &[u8] = b"EOF";
 const IPS_HEADER: &[u8] = b"PATCH";
 
+/// An IPS record
 #[derive(Clone, PartialEq, Eq)]
 pub enum Record {
+    /// Record contains new data
     Normal {
+        /// The offset the record should be written at
         offset: u32,
+        /// The data that should be written
         data: SmallVec<[u8; crate::INLINE_DATA_SIZE]>,
     },
+    /// Record contains new data in a Run-Length Encoded format
     RLE {
+        /// The offset the record should be written at
         offset: u32,
+        /// The amount of data that should be written
         size: NonZero<u16>,
+        /// The value that should be written
         data: u8,
     },
 }
@@ -47,33 +55,36 @@ impl Record {
         }
     }
 
-    pub fn apply(&self, data: &mut Vec<u8>) {
-        let begin = self.offset() as usize;
-        let len = self.len() as usize;
-        let end = begin + len;
-        if end > data.len() {
-            data.resize(end, 0);
-        }
-        let slice = data.get_mut(begin..end).unwrap();
+    /// Applies a single record
+    /// # Errors
+    /// `IO` if any `io::Error` is generated from `output`
+    pub fn apply<T: io::Write + io::Seek>(&self, mut output: T) -> io::Result<()> {
+        output.seek(io::SeekFrom::Start(self.offset().into()))?;
 
-        match self {
-            Record::Normal { data: new_data, .. } => {
-                slice.copy_from_slice(new_data);
+        match *self {
+            Record::Normal { ref data, .. } => {
+                output.write_all(data)?;
             }
-            Record::RLE { data: new_data, .. } => {
-                slice.fill(*new_data);
+            Record::RLE { data: new_data, size, ..  } => {
+                for _ in 0..size.into() {
+                    output.write_u8(new_data)?;
+                }
             }
         }
+        Ok(())
     }
 
+    /// The size of this record
     #[must_use]
     pub fn len(&self) -> u16 {
         match self {
-            Record::Normal { data, .. } => u16::try_from(data.len()).unwrap(),
+            #[allow(clippy::cast_possible_truncation)]
+            Record::Normal { data, .. } => data.len() as u16,
             Record::RLE { size, .. } => (*size).into(),
         }
     }
 
+    /// The offset this record should be applied at
     #[must_use]
     pub fn offset(&self) -> u32 {
         match self {
@@ -100,12 +111,18 @@ impl Debug for Record {
     }
 }
 
+/// A parsed IPS file
 #[derive(Clone, Default, Debug)]
 pub struct File {
     pub(crate) records: Vec<Record>,
 }
 
 impl File {
+    /// Parse an IPS file
+    /// # Errors
+    /// `InvalidHeader` if the patch header is invalid
+    /// `ZeroSizedHunk` if a zero-length record is parsed
+    /// `IO` if any `io::Error` is generated from accessing `ips`
     pub fn parse<T: io::Read>(mut ips: T) -> Result<Self> {
         let header = {
             let mut header = [0; IPS_HEADER.len()];
@@ -124,16 +141,23 @@ impl File {
         Ok(Self { records })
     }
 
-    pub fn apply<T: io::Read, U: io::Write>(&self, mut input: T, mut output: U) -> io::Result<()> {
-        let mut data = Vec::new();
-        input.read_to_end(&mut data)?;
+    /// Apply the contained IPS records to an input file and generate a patched file
+    /// # Errors
+    /// `IO` if any `io::Error` is generated from accessing `input` or `output`
+    /// Any error returned by `Record::apply`
+    pub fn apply<T: io::Read, U: io::Write + io::Seek>(&self, mut input: T, mut output: U) -> io::Result<()> {
+        io::copy(&mut input, &mut output)?;
+        output.seek(io::SeekFrom::Start(0))?;
 
         for record in &self.records {
-            record.apply(&mut data);
+            record.apply(&mut output)?;
         }
 
-        output.write_all(&data)?;
-
         Ok(())
+    }
+
+    /// Inspect the records contained in this IPS file
+    pub fn records(&self) -> impl Iterator<Item = &Record> {
+        self.records.iter()
     }
 }
