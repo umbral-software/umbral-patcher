@@ -1,4 +1,4 @@
-use std::{fmt::Debug, io, vec};
+use std::{fmt::Debug, io, num::NonZero};
 
 use crate::{Error, Result};
 use byteorder::{BE, ByteOrder, ReadBytesExt};
@@ -15,14 +15,14 @@ pub enum Record {
     },
     RLE {
         offset: u32,
-        size: u16,
+        size: NonZero<u16>,
         data: u8,
     },
 }
 
 #[allow(clippy::len_without_is_empty)] // The concept of 'empty' doesn't exist for a single record
 impl Record {
-    pub(crate) fn parse<T: io::Read>(mut ips: T) -> io::Result<Option<Record>> {
+    pub(crate) fn parse<T: io::Read>(mut ips: T) -> Result<Option<Record>> {
         let offset = ips.read_u24::<BE>()?;
 
         if offset == BE::read_u24(IPS_EOF) {
@@ -37,7 +37,10 @@ impl Record {
                 };
                 Ok(Some(Record::Normal { offset, data }))
             } else {
-                let size = ips.read_u16::<BE>()?;
+                let size = {
+                    let size = ips.read_u16::<BE>()?;
+                    NonZero::new(size).ok_or(Error::ZeroSizedHunk)?
+                };
                 let data = ips.read_u8()?;
                 Ok(Some(Record::RLE { offset, size, data }))
             }
@@ -63,13 +66,15 @@ impl Record {
         }
     }
 
+    #[must_use]
     pub fn len(&self) -> u16 {
         match self {
             Record::Normal { data, .. } => u16::try_from(data.len()).unwrap(),
-            Record::RLE { size, .. } => *size,
+            Record::RLE { size, .. } => (*size).into(),
         }
     }
 
+    #[must_use]
     pub fn offset(&self) -> u32 {
         match self {
             Record::Normal { offset, .. } | Record::RLE { offset, .. } => *offset,
@@ -97,7 +102,7 @@ impl Debug for Record {
 
 #[derive(Clone, Default, Debug)]
 pub struct File {
-    records: Vec<Record>,
+    pub(crate) records: Vec<Record>,
 }
 
 impl File {
@@ -119,19 +124,16 @@ impl File {
         Ok(Self { records })
     }
 
-    pub fn apply(&self, data: &mut Vec<u8>) {
+    pub fn apply<T: io::Read, U: io::Write>(&self, mut input: T, mut output: U) -> io::Result<()> {
+        let mut data = Vec::new();
+        input.read_to_end(&mut data)?;
+
         for record in &self.records {
-            record.apply(data);
+            record.apply(&mut data);
         }
-    }
-}
 
-impl IntoIterator for File {
-    type Item = Record;
+        output.write_all(&data)?;
 
-    type IntoIter = vec::IntoIter<Record>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.records.into_iter()
+        Ok(())
     }
 }
