@@ -1,4 +1,9 @@
-use std::{fmt::Debug, fs, io, num::NonZero};
+use std::{
+    fmt::Debug,
+    fs,
+    io::{self, BufReader, BufWriter, Write},
+    num::NonZero,
+};
 
 use crate::{Error, PatchFile, Result};
 use byteorder::{BE, ByteOrder, ReadBytesExt, WriteBytesExt};
@@ -174,11 +179,14 @@ impl PatchFile for File {
     type Record = Record;
 
     fn parse(patch: &fs::File) -> Result<Self> {
-        Self::parse(patch)
+        Self::parse(BufReader::new(patch))
     }
 
     fn apply(&self, input: &fs::File, output: &mut fs::File) -> Result<()> {
-        self.apply(input, output).map_err(Error::IO)
+        let mut output = BufWriter::new(output);
+        self.apply(BufReader::new(input), &mut output)?;
+        output.flush()?;
+        Ok(())
     }
 
     fn records(&self) -> impl Iterator<Item = &Self::Record> {

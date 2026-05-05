@@ -2,7 +2,12 @@ use byteorder::{LE, ReadBytesExt};
 use smallvec::{SmallVec, smallvec};
 
 use crate::{Error, INLINE_DATA_SIZE, PatchFile, Result, UvarReadExtensions, crc32, crc32_length};
-use std::{fmt::Debug, fs, io, iter};
+use std::{
+    fmt::Debug,
+    fs,
+    io::{self, BufReader},
+    iter,
+};
 
 const UPS_HEADER: &[u8] = b"UPS1";
 
@@ -241,11 +246,11 @@ impl PatchFile for File {
     type Record = Record;
 
     fn parse(patch: &fs::File) -> Result<Self> {
-        Self::parse(patch)
+        Self::parse(BufReader::new(patch))
     }
 
     fn apply(&self, input: &fs::File, output: &mut fs::File) -> Result<()> {
-        self.apply(input, output)
+        self.apply(BufReader::new(input), output)
     }
 
     fn records(&self) -> impl Iterator<Item = &Self::Record> {

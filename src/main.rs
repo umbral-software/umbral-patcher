@@ -41,7 +41,7 @@ fn generate_output_name(input: &Path, ips: &Path) -> Option<PathBuf> {
     Some(ret)
 }
 
-fn apply_patch<T: PatchFile>(patch: File, input: File, mut output: File) -> Result<()> {
+fn apply_patch<T: PatchFile>(input: File, patch: File, mut output: File) -> Result<()> {
     T::parse(&patch)?.apply(&input, &mut output)
 }
 
@@ -61,9 +61,9 @@ fn real_main() -> Result<()> {
     let out_file = File::create_new(&output)?;
 
     match format {
-        PatchFormat::Bps => apply_patch::<bps::File>(patch_file, in_file, out_file),
-        PatchFormat::Ips => apply_patch::<ips::File>(patch_file, in_file, out_file),
-        PatchFormat::Ups => apply_patch::<ups::File>(patch_file, in_file, out_file),
+        PatchFormat::Bps => apply_patch::<bps::File>(in_file, patch_file, out_file),
+        PatchFormat::Ips => apply_patch::<ips::File>(in_file, patch_file, out_file),
+        PatchFormat::Ups => apply_patch::<ups::File>(in_file, patch_file, out_file),
     }
 }
 
