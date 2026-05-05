@@ -26,14 +26,22 @@ impl<T: UvarReadExtensions> BpsReadExtensions for T {
     }
 }
 
+/// A BPS record
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Record {
+    /// Copy directly from the source file at the current outputOffset
     SourceRead(NonZero<usize>),
+    /// Copy directly from the patch file
     TargetRead(SmallVec<[u8; INLINE_DATA_SIZE]>),
+    /// Copy from the source file at the current sourceRelativeOffset+offset
+    #[allow(missing_docs)]
     SourceCopy { length: NonZero<usize>, offset: i64 },
+    /// Copy from the target file at the current targetRelativeOffset+offset
+    #[allow(missing_docs)]
     TargetCopy { length: NonZero<usize>, offset: i64 },
 }
 
+#[allow(clippy::len_without_is_empty)] // The concept of 'empty' doesn't exist for a single record
 impl Record {
     fn parse<T: io::Read>(mut bps: T) -> Result<Self> {
         let raw = bps.read_uvar()?;
@@ -61,7 +69,8 @@ impl Record {
         Ok(result)
     }
 
-    fn apply<T: io::Read + io::Seek, U: io::Read + io::Write + io::Seek>(
+    /// Applies a single record
+    pub fn apply<T: io::Read + io::Seek, U: io::Read + io::Write + io::Seek>(
         &self,
         mut source: T,
         mut target: U,
@@ -119,8 +128,20 @@ impl Record {
 
         Ok(())
     }
+
+    /// The size of this record
+    #[must_use]
+    pub fn len(&self) -> usize {
+        match *self {
+            Record::SourceRead(length) => length.into(),
+            Record::TargetRead(ref data) => data.len(),
+            Record::SourceCopy { length, .. } => length.into(),
+            Record::TargetCopy { length, .. } => length.into(),
+        }
+    }
 }
 
+/// A parsed BPS file
 #[derive(Clone, Default, Debug)]
 pub struct File {
     source_size: u64,
@@ -134,6 +155,7 @@ pub struct File {
 }
 
 impl File {
+    /// Parse a BPS file
     pub fn parse<T: io::Read + io::Seek>(mut bps: T) -> Result<Self> {
         let header = {
             let mut header = [0; BPS_HEADER.len()];
@@ -199,6 +221,7 @@ impl File {
         })
     }
 
+    /// Apply the contained BPS records to an input file and generate a patched file
     pub fn apply<T: io::Read + io::Seek, U: io::Read + io::Write + io::Seek>(
         &self,
         mut source: T,
@@ -248,8 +271,14 @@ impl File {
         Ok(())
     }
 
+    /// Inspect the metadata contained in this BPS file
     #[must_use]
     pub fn metadata(&self) -> &str {
         &self.metadata
+    }
+
+    /// Inspect the records contained in this BPS file
+    pub fn records(&self) -> impl Iterator<Item = &Record> {
+        self.records.iter()
     }
 }

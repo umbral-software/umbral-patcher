@@ -7,15 +7,23 @@ use smallvec::SmallVec;
 const IPS_EOF: &[u8] = b"EOF";
 const IPS_HEADER: &[u8] = b"PATCH";
 
+/// An IPS record
 #[derive(Clone, PartialEq, Eq)]
 pub enum Record {
+    /// Record contains new data
     Normal {
+        /// The offset the record should be written at
         offset: u32,
+        /// The data that should be written
         data: SmallVec<[u8; crate::INLINE_DATA_SIZE]>,
     },
+    /// Record contains new data in a Run-Length Encoded format
     RLE {
+        /// The offset the record should be written at
         offset: u32,
+        /// The amount of data that should be written
         size: NonZero<u16>,
+        /// The value that should be written
         data: u8,
     },
 }
@@ -47,6 +55,9 @@ impl Record {
         }
     }
 
+    /// Applies a single record
+    /// data should be long enough to contain the new data.
+    /// i.e. `data.len() >= self.offset() + self.len()` should be true
     pub fn apply(&self, data: &mut Vec<u8>) {
         let begin = self.offset() as usize;
         let len = self.len() as usize;
@@ -66,6 +77,7 @@ impl Record {
         }
     }
 
+    /// The size of this record
     #[must_use]
     pub fn len(&self) -> u16 {
         match self {
@@ -74,6 +86,7 @@ impl Record {
         }
     }
 
+    /// The offset this record should be applied at
     #[must_use]
     pub fn offset(&self) -> u32 {
         match self {
@@ -100,12 +113,14 @@ impl Debug for Record {
     }
 }
 
+/// A parsed IPS file
 #[derive(Clone, Default, Debug)]
 pub struct File {
     pub(crate) records: Vec<Record>,
 }
 
 impl File {
+    /// Parse an IPS file
     pub fn parse<T: io::Read>(mut ips: T) -> Result<Self> {
         let header = {
             let mut header = [0; IPS_HEADER.len()];
@@ -124,6 +139,7 @@ impl File {
         Ok(Self { records })
     }
 
+    /// Apply the contained IPS records to an input file and generate a patched file
     pub fn apply<T: io::Read, U: io::Write>(&self, mut input: T, mut output: U) -> io::Result<()> {
         let mut data = Vec::new();
         input.read_to_end(&mut data)?;
@@ -135,5 +151,10 @@ impl File {
         output.write_all(&data)?;
 
         Ok(())
+    }
+
+    /// Inspect the records contained in this IPS file
+    pub fn records(&self) -> impl Iterator<Item = &Record> {
+        self.records.iter()
     }
 }

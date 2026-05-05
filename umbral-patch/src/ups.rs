@@ -31,12 +31,14 @@ impl<T: io::Read> UpsReadExtensions for T {
     }
 }
 
+/// A UPS record
 #[derive(Clone, PartialEq, Eq)]
 pub struct Record {
     skip: usize,
     data: SmallVec<[u8; INLINE_DATA_SIZE]>,
 }
 
+#[allow(clippy::len_without_is_empty)] // The concept of 'empty' doesn't exist for a single record
 impl Record {
     fn parse<T: io::Read>(mut ups: T) -> Result<Self> {
         let skip = ups
@@ -55,7 +57,8 @@ impl Record {
         Ok(Self { skip, data })
     }
 
-    fn apply<T: io::Read, U: io::Write>(&self, mut input: T, mut output: U) -> io::Result<()> {
+    /// Applies a single record
+    pub fn apply<T: io::Read, U: io::Write>(&self, mut input: T, mut output: U) -> io::Result<()> {
         if self.skip > 0 {
             let mut buf: SmallVec<[_; INLINE_DATA_SIZE]> = smallvec![0; self.skip];
             input.read_or_zero(&mut buf)?;
@@ -71,6 +74,18 @@ impl Record {
 
         Ok(())
     }
+
+    /// The size of this record's skip value
+    #[must_use]
+    pub fn skip_len(&self) -> usize {
+        self.skip
+    }
+
+    /// The size of this record's data payload
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.data.len()
+    }
 }
 
 impl Debug for Record {
@@ -82,6 +97,7 @@ impl Debug for Record {
     }
 }
 
+/// A parsed UPS file
 #[derive(Clone, Default, Debug)]
 pub struct File {
     input_size: u64,
@@ -94,6 +110,7 @@ pub struct File {
 }
 
 impl File {
+    /// Parse a UPS file
     pub fn parse<T: io::Read + io::Seek>(mut ups: T) -> Result<Self> {
         let header = {
             let mut header = [0; UPS_HEADER.len()];
@@ -150,6 +167,7 @@ impl File {
         })
     }
 
+    /// Apply the contained UPS records to an input file and generate a patched file
     pub fn apply<T: io::Read + io::Seek, U: io::Read + io::Write + io::Seek>(
         &self,
         mut input: T,
@@ -196,5 +214,10 @@ impl File {
         }
 
         Ok(())
+    }
+
+    /// Inspect the records contained in this UPS file
+    pub fn records(&self) -> impl Iterator<Item = &Record> {
+        self.records.iter()
     }
 }
