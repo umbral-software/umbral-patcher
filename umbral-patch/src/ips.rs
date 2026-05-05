@@ -1,7 +1,7 @@
 use std::{fmt::Debug, io, num::NonZero};
 
 use crate::{Error, Result};
-use byteorder::{BE, ByteOrder, ReadBytesExt};
+use byteorder::{BE, ByteOrder, ReadBytesExt, WriteBytesExt};
 use smallvec::SmallVec;
 
 const IPS_EOF: &[u8] = b"EOF";
@@ -56,25 +56,22 @@ impl Record {
     }
 
     /// Applies a single record
-    /// data should be long enough to contain the new data.
-    /// i.e. `data.len() >= self.offset() + self.len()` should be true
-    pub fn apply(&self, data: &mut Vec<u8>) {
-        let begin = self.offset() as usize;
-        let len = self.len() as usize;
-        let end = begin + len;
-        if end > data.len() {
-            data.resize(end, 0);
-        }
-        let slice = &mut data[begin..end];
+    /// # Errors
+    /// `IO` if any `io::Error` is generated from `output`
+    pub fn apply<T: io::Write + io::Seek>(&self, mut output: T) -> io::Result<()> {
+        output.seek(io::SeekFrom::Start(self.offset().into()))?;
 
-        match self {
-            Record::Normal { data: new_data, .. } => {
-                slice.copy_from_slice(new_data);
+        match *self {
+            Record::Normal { ref data, .. } => {
+                output.write_all(data)?;
             }
-            Record::RLE { data: new_data, .. } => {
-                slice.fill(*new_data);
+            Record::RLE { data: new_data, size, ..  } => {
+                for _ in 0..size.into() {
+                    output.write_u8(new_data)?;
+                }
             }
         }
+        Ok(())
     }
 
     /// The size of this record
@@ -147,15 +144,14 @@ impl File {
     /// Apply the contained IPS records to an input file and generate a patched file
     /// # Errors
     /// `IO` if any `io::Error` is generated from accessing `input` or `output`
-    pub fn apply<T: io::Read, U: io::Write>(&self, mut input: T, mut output: U) -> io::Result<()> {
-        let mut data = Vec::new();
-        input.read_to_end(&mut data)?;
+    /// Any error returned by `Record::apply`
+    pub fn apply<T: io::Read, U: io::Write + io::Seek>(&self, mut input: T, mut output: U) -> io::Result<()> {
+        io::copy(&mut input, &mut output)?;
+        output.seek(io::SeekFrom::Start(0))?;
 
         for record in &self.records {
-            record.apply(&mut data);
+            record.apply(&mut output)?;
         }
-
-        output.write_all(&data)?;
 
         Ok(())
     }

@@ -118,7 +118,7 @@ impl File {
     /// `VariableIntegerOverflow` if a filesize is larger than u64 or a record offset is larger than i64
     /// `InvalidInputChecksum` if the patch checksum inside the patch does not match the actual UPS file
     /// `InvalidInputSize` if the patch size inside the patch does not match the actual UPS file's size
-    /// `IO` if any `io::Error` is generated from accessing `bps`
+    /// `IO` if any `io::Error` is generated from accessing `ups`
     pub fn parse<T: io::Read + io::Seek>(mut ups: T) -> Result<Self> {
         let header = {
             let mut header = [0; UPS_HEADER.len()];
