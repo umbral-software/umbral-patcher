@@ -71,7 +71,8 @@ impl Record {
 
     /// Applies a single record
     /// # Errors
-    /// * `VariableIntegerOverflow` if a RLE extends more than `usize::MAX` bytes beyond outputOffset
+    /// * `OffsetOverflow` if an attempt to read before the start of the file is made
+    /// * `OffsetOverflow` RLE extends more than `usize::MAX` bytes beyond outputOffset
     /// * `IO` if any `io::Error` is generated from `source` or `target`
     pub fn apply<T: io::Read + io::Seek, U: io::Read + io::Write + io::Seek>(
         &self,
@@ -103,8 +104,10 @@ impl Record {
                 Cow::Owned(buf)
             }
             Record::TargetCopy { length, offset } => {
-                let start_pos = target.seek(io::SeekFrom::Current(offset))?;
+                let old_pos = target.stream_position()?;
                 let eof = target.seek(io::SeekFrom::End(0))?;
+
+                let start_pos = old_pos.checked_add_signed(offset).ok_or_else(|| Error::OffsetOverflow("Record::TargetCopy offset"))?;
                 target.seek(io::SeekFrom::Start(start_pos))?;
 
                 let mut buf: SmallVec<[_; INLINE_DATA_SIZE]> =
@@ -114,7 +117,7 @@ impl Record {
                     if read_pos >= eof {
                         buf.push(
                             buf[usize::try_from(read_pos - eof)
-                                .map_err(|_| Error::VariableIntegerOverflow("RLE length"))?],
+                                .map_err(|_| Error::OffsetOverflow("Record::TargetCopy RLE length"))?],
                         );
                         target.seek_relative(1)?;
                     } else {

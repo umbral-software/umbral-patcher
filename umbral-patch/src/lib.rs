@@ -74,6 +74,8 @@ pub enum Error {
     InvalidOutputSize { expected: u64, actual: u64 },
     /// I/O error
     IO(io::Error),
+    /// An offset overflows. The contained string hints at the logical meaning of the invalid offset.
+    OffsetOverflow(&'static str),
     /// A variable length integer could not be represented as a 128-bit integer. The contained string hints at the logical meaning of the invalid integer.
     VariableIntegerOverflow(&'static str),
     /// The patch contains a record with no data. This indicates an error with the patch file.
@@ -102,6 +104,10 @@ impl Display for Error {
                 "Output size invalid; Expected: {expected}, Actual: {actual}"
             ),
             Error::IO(inner) => write!(f, "I/O error \"{inner}\""),
+            Error::OffsetOverflow(what) => write!(
+                f,
+                "A file offset integer for '{what}' overflowed"
+            ),
             Error::VariableIntegerOverflow(what) => write!(
                 f,
                 "A variable-length integer for '{what}' could not be represented"
