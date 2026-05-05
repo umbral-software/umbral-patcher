@@ -2,12 +2,7 @@ use byteorder::{LE, ReadBytesExt};
 use smallvec::{SmallVec, smallvec};
 
 use crate::{Error, INLINE_DATA_SIZE, Result, UvarReadExtensions, crc32, crc32_length};
-use std::{
-    borrow::Cow,
-    fmt::Debug,
-    io::{self, Read, Seek},
-    num::NonZero,
-};
+use std::{borrow::Cow, fmt::Debug, io, num::NonZero};
 
 const BPS_HEADER: &[u8] = b"BPS1";
 
@@ -139,9 +134,7 @@ pub struct File {
 }
 
 impl File {
-    pub fn parse<T: io::Read + io::Seek>(bps: T) -> Result<Self> {
-        let mut bps = io::BufReader::new(bps);
-
+    pub fn parse<T: io::Read + io::Seek>(mut bps: T) -> Result<Self> {
         let header = {
             let mut header = [0; BPS_HEADER.len()];
             bps.read_exact(&mut header)?;

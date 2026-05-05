@@ -1,5 +1,6 @@
 use clap::{Parser, ValueEnum};
 use std::fs::File;
+use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use umbral_patcher::{Result, bps, ips, ups};
 
@@ -52,9 +53,9 @@ fn real_main() -> Result<()> {
         .or_else(|| generate_output_name(&args.input, &args.patch))
         .expect("Could not deduce output file name");
 
-    let in_file = File::open(args.input)?;
-    let patch_file = File::open(args.patch)?;
-    let out_file: File = File::create_new(&output)?;
+    let in_file = BufReader::new(File::open(args.input)?);
+    let patch_file = BufReader::new(File::open(args.patch)?);
+    let out_file = File::create_new(&output)?;
 
     match format {
         PatchFormat::Bps => {

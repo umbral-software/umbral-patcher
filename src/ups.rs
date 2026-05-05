@@ -2,11 +2,7 @@ use byteorder::{LE, ReadBytesExt};
 use smallvec::{SmallVec, smallvec};
 
 use crate::{Error, INLINE_DATA_SIZE, Result, UvarReadExtensions, crc32, crc32_length};
-use std::{
-    fmt::Debug,
-    io::{self, Read, Seek},
-    iter,
-};
+use std::{fmt::Debug, io, iter};
 
 const UPS_HEADER: &[u8] = b"UPS1";
 
@@ -98,11 +94,7 @@ pub struct File {
 }
 
 impl File {
-    pub fn parse<T: io::Read + io::Seek>(ups: T) -> Result<Self> {
-        // BufReader results in a considerable performance improvement
-        // Probabally because of the amount of uvar reads?
-        let mut ups = io::BufReader::new(ups);
-
+    pub fn parse<T: io::Read + io::Seek>(mut ups: T) -> Result<Self> {
         let header = {
             let mut header = [0; UPS_HEADER.len()];
             ups.read_exact(&mut header)?;
