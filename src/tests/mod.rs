@@ -2,7 +2,7 @@ use std::num::NonZero;
 
 use smallvec::SmallVec;
 
-use crate::{INLINE_DATA_SIZE, Result, crc32, bps, ips, ups};
+use crate::{INLINE_DATA_SIZE, Result, bps, crc32, ips, ups};
 
 fn uvar_encode(mut data: u128) -> SmallVec<[u8; INLINE_DATA_SIZE]> {
     let mut ret = SmallVec::new();
@@ -115,7 +115,7 @@ fn bps_read_ivar() -> Result<()> {
     use bps::BpsReadExtensions;
 
     for i in [0, 1, 0x7F, 0x80, 0xFFFF, usize::MAX as i128, i128::MAX] {
-        assert_eq!( i, ivar_encode(i).as_slice().read_ivar()?);
+        assert_eq!(i, ivar_encode(i).as_slice().read_ivar()?);
         assert_eq!(-i, ivar_encode(-i).as_slice().read_ivar()?);
     }
 

@@ -2,7 +2,12 @@ use byteorder::{LE, ReadBytesExt};
 use smallvec::{SmallVec, smallvec};
 
 use crate::{Error, INLINE_DATA_SIZE, Result, crc32, crc32_length};
-use std::{borrow::Cow, fmt::Debug, io::{self, Read, Seek}, num::NonZero};
+use std::{
+    borrow::Cow,
+    fmt::Debug,
+    io::{self, Read, Seek},
+    num::NonZero,
+};
 
 const BPS_HEADER: &[u8] = b"BPS1";
 
@@ -109,7 +114,8 @@ impl Record {
                 let eof = target.seek(io::SeekFrom::End(0))?;
                 target.seek(io::SeekFrom::Start(start_pos))?;
 
-                let mut buf: SmallVec<[_; INLINE_DATA_SIZE]> = SmallVec::with_capacity(length.into());
+                let mut buf: SmallVec<[_; INLINE_DATA_SIZE]> =
+                    SmallVec::with_capacity(length.into());
                 for i in 0..length.into() {
                     let read_pos = start_pos + i as u64;
                     if read_pos >= eof {
