@@ -113,7 +113,8 @@ impl Record {
                     let read_pos = start_pos + i as u64;
                     if read_pos >= eof {
                         buf.push(
-                            buf[usize::try_from(read_pos - eof).map_err(|_| Error::VariableIntegerOverflow("RLE length"))?],
+                            buf[usize::try_from(read_pos - eof)
+                                .map_err(|_| Error::VariableIntegerOverflow("RLE length"))?],
                         );
                         target.seek_relative(1)?;
                     } else {

@@ -65,7 +65,11 @@ impl Record {
             Record::Normal { ref data, .. } => {
                 output.write_all(data)?;
             }
-            Record::RLE { data: new_data, size, ..  } => {
+            Record::RLE {
+                data: new_data,
+                size,
+                ..
+            } => {
                 for _ in 0..size.into() {
                     output.write_u8(new_data)?;
                 }
@@ -145,7 +149,11 @@ impl File {
     /// # Errors
     /// * `IO` if any `io::Error` is generated from accessing `input` or `output`
     /// * Any error returned by `Record::apply`
-    pub fn apply<T: io::Read, U: io::Write + io::Seek>(&self, mut input: T, mut output: U) -> io::Result<()> {
+    pub fn apply<T: io::Read, U: io::Write + io::Seek>(
+        &self,
+        mut input: T,
+        mut output: U,
+    ) -> io::Result<()> {
         io::copy(&mut input, &mut output)?;
         output.seek(io::SeekFrom::Start(0))?;
 
