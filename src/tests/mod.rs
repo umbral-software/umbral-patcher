@@ -2,21 +2,28 @@ use std::num::NonZero;
 
 use smallvec::SmallVec;
 
-use crate::{INLINE_DATA_SIZE, Result, crc32, ips, ups};
+use crate::{INLINE_DATA_SIZE, Result, crc32, bps, ips, ups};
 
-fn ups_encode(mut offset: usize) -> SmallVec<[u8; INLINE_DATA_SIZE]> {
+fn uvar_encode(mut data: u128) -> SmallVec<[u8; INLINE_DATA_SIZE]> {
     let mut ret = SmallVec::new();
     loop {
-        let x = (offset & 0x7f) as u8;
-        offset >>= 7;
-        if offset == 0 {
+        let x = (data & 0x7F) as u8;
+        data >>= 7;
+        if data == 0 {
             ret.push(0x80 | x);
-            break;
+            return ret;
         }
         ret.push(x);
-        offset -= 1;
+        data -= 1;
     }
-    ret
+}
+
+fn ivar_encode(data: i128) -> SmallVec<[u8; INLINE_DATA_SIZE]> {
+    if data == i128::MIN {
+        panic!("Overflow: Attempted to encode i128::MIN as variable-length");
+    }
+    let sign_bit = if data < 0 { 1 } else { 0 };
+    uvar_encode(((data.abs() as u128) << 1) | sign_bit)
 }
 
 #[test]
@@ -86,7 +93,30 @@ fn ups_read_uvar() -> Result<()> {
     use ups::UpsReadExtensions;
 
     for i in [0, 1, 0x7F, 0x80, 0xFFFF, usize::MAX] {
-        assert_eq!(i as u128, ups_encode(i).as_slice().read_uvar()?);
+        assert_eq!(i as u128, uvar_encode(i as u128).as_slice().read_uvar()?);
+    }
+
+    Ok(())
+}
+
+#[test]
+fn bps_read_uvar() -> Result<()> {
+    use bps::BpsReadExtensions;
+
+    for i in [0, 1, 0x7F, 0x80, 0xFFFF, usize::MAX as u128, u128::MAX] {
+        assert_eq!(i, uvar_encode(i).as_slice().read_uvar()?);
+    }
+
+    Ok(())
+}
+
+#[test]
+fn bps_read_ivar() -> Result<()> {
+    use bps::BpsReadExtensions;
+
+    for i in [0, 1, 0x7F, 0x80, 0xFFFF, usize::MAX as i128, i128::MAX] {
+        assert_eq!( i, ivar_encode(i).as_slice().read_ivar()?);
+        assert_eq!(-i, ivar_encode(-i).as_slice().read_ivar()?);
     }
 
     Ok(())

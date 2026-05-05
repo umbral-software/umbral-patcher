@@ -2,7 +2,7 @@ use byteorder::{LE, ReadBytesExt};
 use smallvec::{SmallVec, smallvec};
 
 use crate::{Error, INLINE_DATA_SIZE, Result, crc32, crc32_length};
-use std::{borrow::Cow, fmt::Debug, io, num::NonZero};
+use std::{borrow::Cow, fmt::Debug, io::{self, Read, Seek}, num::NonZero};
 
 const BPS_HEADER: &[u8] = b"BPS1";
 
@@ -82,26 +82,44 @@ impl Record {
     ) -> io::Result<()> {
         let data = match *self {
             Record::SourceRead(length) => {
-                let old_offset = source.stream_position()?;
-                source.seek(io::SeekFrom::Start(target.stream_position()?))?;
+                let old_source_offset = source.stream_position()?;
+                let old_target_offset = target.stream_position()?;
+
+                let eof = target.seek(io::SeekFrom::End(0))?;
+                source.seek(io::SeekFrom::Start(eof))?;
 
                 let mut buf: SmallVec<[_; INLINE_DATA_SIZE]> = smallvec![0; length.into()];
                 source.read_exact(&mut buf)?;
 
-                source.seek(io::SeekFrom::Start(old_offset))?;
+                source.seek(io::SeekFrom::Start(old_source_offset))?;
+                target.seek(io::SeekFrom::Start(old_target_offset))?;
 
                 Cow::Owned(buf)
             }
             Record::TargetRead(ref data) => Cow::Borrowed(data),
             Record::SourceCopy { length, offset } => {
-                source.seek(io::SeekFrom::Current(offset))?;
+                source.seek_relative(offset)?;
 
                 let mut buf: SmallVec<[_; INLINE_DATA_SIZE]> = smallvec![0; length.into()];
                 source.read_exact(&mut buf)?;
                 Cow::Owned(buf)
             }
             Record::TargetCopy { length, offset } => {
-                todo!()
+                let start_pos = target.seek(io::SeekFrom::Current(offset))?;
+                let eof = target.seek(io::SeekFrom::End(0))?;
+                target.seek(io::SeekFrom::Start(start_pos))?;
+
+                let mut buf: SmallVec<[_; INLINE_DATA_SIZE]> = SmallVec::with_capacity(length.into());
+                for i in 0..length.into() {
+                    let read_pos = start_pos + i as u64;
+                    if read_pos >= eof {
+                        buf.push(buf[(read_pos - eof) as usize]);
+                        target.seek_relative(1)?;
+                    } else {
+                        buf.push(target.read_u8()?);
+                    }
+                }
+                Cow::Owned(buf)
             }
         };
 
@@ -127,7 +145,9 @@ pub struct File {
 }
 
 impl File {
-    pub fn parse<T: io::Read + io::Seek>(mut bps: T) -> Result<Self> {
+    pub fn parse<T: io::Read + io::Seek>(bps: T) -> Result<Self> {
+        let mut bps = io::BufReader::new(bps);
+
         let header = {
             let mut header = [0; BPS_HEADER.len()];
             bps.read_exact(&mut header)?;
@@ -220,6 +240,7 @@ impl File {
             record.apply(&mut source, &mut target)?;
         }
 
+        target.seek(io::SeekFrom::End(0))?;
         let target_size = target.stream_position()?;
         if self.target_size != target_size {
             return Err(Error::InvalidOutputSize {
