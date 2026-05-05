@@ -1,0 +1,9 @@
+[package]
+name = "umbral-patch"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+byteorder = "1.5"
+crc = "3.4"
+smallvec = { version = "1.15", features = ["const_generics", "union"] }
