@@ -14,7 +14,7 @@ use crc::{CRC_32_ISO_HDLC, Crc};
 
 /// BPS ('Beat Patch') file routines
 pub mod bps;
-/// BPS ('Internation Patching System') file routines
+/// BPS ('International Patching System') file routines
 pub mod ips;
 /// UPS file routines
 pub mod ups;
