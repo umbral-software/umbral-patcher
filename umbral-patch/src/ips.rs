@@ -181,7 +181,7 @@ impl PatchFile for File {
         self.apply(input, output).map_err(Error::IO)
     }
 
-    fn records(&self) -> impl Iterator<Item=&Self::Record> {
+    fn records(&self) -> impl Iterator<Item = &Self::Record> {
         self.records()
     }
 }

@@ -248,7 +248,7 @@ impl PatchFile for File {
         self.apply(input, output)
     }
 
-    fn records(&self) -> impl Iterator<Item=&Self::Record> {
+    fn records(&self) -> impl Iterator<Item = &Self::Record> {
         self.records()
     }
 }

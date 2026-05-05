@@ -3,7 +3,11 @@
 //! A simple to use BPS, IPS and UPS patching library
 
 use std::{
-    error, fmt::{Debug, Display}, fs::File, io, result, string::FromUtf8Error
+    error,
+    fmt::{Debug, Display},
+    fs::File,
+    io, result,
+    string::FromUtf8Error,
 };
 
 use byteorder::ReadBytesExt;
@@ -40,7 +44,7 @@ pub trait PatchFile: Sized {
     fn apply(&self, input: &File, output: &mut File) -> Result<()>;
 
     /// Inspect the records contained in this `PatchFile``
-    fn records(&self) -> impl Iterator<Item=&Self::Record>; 
+    fn records(&self) -> impl Iterator<Item = &Self::Record>;
 }
 
 trait UvarReadExtensions {
@@ -116,10 +120,9 @@ impl Display for Error {
                 "Output size invalid; Expected: {expected}, Actual: {actual}"
             ),
             Error::IO(inner) => write!(f, "I/O error \"{inner}\""),
-            Error::OffsetOverflow(what) => write!(
-                f,
-                "A file offset integer for '{what}' overflowed"
-            ),
+            Error::OffsetOverflow(what) => {
+                write!(f, "A file offset integer for '{what}' overflowed")
+            }
             Error::VariableIntegerOverflow(what) => write!(
                 f,
                 "A variable-length integer for '{what}' could not be represented"
