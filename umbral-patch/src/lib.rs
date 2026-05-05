@@ -3,10 +3,7 @@
 //! A simple to use BPS, IPS and UPS patching library
 
 use std::{
-    error,
-    fmt::{Debug, Display},
-    io, result,
-    string::FromUtf8Error,
+    error, fmt::{Debug, Display}, fs::File, io, result, string::FromUtf8Error
 };
 
 use byteorder::ReadBytesExt;
@@ -30,6 +27,21 @@ pub type Result<T> = result::Result<T, Error>;
 
 #[allow(non_camel_case_types)]
 type uvar = u128;
+
+/// Generic type for any patch file
+pub trait PatchFile: Sized {
+    /// Type of individual patch records
+    type Record;
+
+    /// Create a `PatchFile` from a `File`
+    fn parse(patch: &File) -> Result<Self>;
+
+    /// Apply the contained records to an input `File`` and generate a patched `File``
+    fn apply(&self, input: &File, output: &mut File) -> Result<()>;
+
+    /// Inspect the records contained in this `PatchFile``
+    fn records(&self) -> impl Iterator<Item=&Self::Record>; 
+}
 
 trait UvarReadExtensions {
     fn read_uvar(&mut self) -> io::Result<uvar>;

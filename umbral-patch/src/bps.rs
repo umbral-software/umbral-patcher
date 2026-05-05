@@ -1,8 +1,8 @@
 use byteorder::{LE, ReadBytesExt};
 use smallvec::{SmallVec, smallvec};
 
-use crate::{Error, INLINE_DATA_SIZE, Result, UvarReadExtensions, crc32, crc32_length};
-use std::{borrow::Cow, fmt::Debug, io, num::NonZero};
+use crate::{Error, INLINE_DATA_SIZE, PatchFile, Result, UvarReadExtensions, crc32, crc32_length};
+use std::{borrow::Cow, fmt::Debug, fs, io, num::NonZero};
 
 const BPS_HEADER: &[u8] = b"BPS1";
 
@@ -301,5 +301,21 @@ impl File {
     /// Inspect the records contained in this BPS file
     pub fn records(&self) -> impl Iterator<Item = &Record> {
         self.records.iter()
+    }
+}
+
+impl PatchFile for File {
+    type Record = Record;
+
+    fn parse(patch: &fs::File) -> Result<Self> {
+        Self::parse(patch)
+    }
+
+    fn apply(&self, input: &fs::File, output: &mut fs::File) -> Result<()> {
+        self.apply(input, output)
+    }
+
+    fn records(&self) -> impl Iterator<Item=&Self::Record> {
+        self.records()
     }
 }
