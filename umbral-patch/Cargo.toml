@@ -2,6 +2,7 @@
 name = "umbral-patch"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
 
 [dependencies]
 byteorder = "1.5"
