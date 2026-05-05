@@ -1,8 +1,13 @@
 use byteorder::{LE, ReadBytesExt};
 use smallvec::{SmallVec, smallvec};
 
-use crate::{Error, INLINE_DATA_SIZE, Result, UvarReadExtensions, crc32, crc32_length};
-use std::{fmt::Debug, io, iter};
+use crate::{Error, INLINE_DATA_SIZE, PatchFile, Result, UvarReadExtensions, crc32, crc32_length};
+use std::{
+    fmt::Debug,
+    fs,
+    io::{self, BufReader},
+    iter,
+};
 
 const UPS_HEADER: &[u8] = b"UPS1";
 
@@ -234,5 +239,21 @@ impl File {
     /// Inspect the records contained in this UPS file
     pub fn records(&self) -> impl Iterator<Item = &Record> {
         self.records.iter()
+    }
+}
+
+impl PatchFile for File {
+    type Record = Record;
+
+    fn parse(patch: &fs::File) -> Result<Self> {
+        Self::parse(BufReader::new(patch))
+    }
+
+    fn apply(&self, input: &fs::File, output: &mut fs::File) -> Result<()> {
+        self.apply(BufReader::new(input), output)
+    }
+
+    fn records(&self) -> impl Iterator<Item = &Self::Record> {
+        self.records()
     }
 }

@@ -1,8 +1,14 @@
 use byteorder::{LE, ReadBytesExt};
 use smallvec::{SmallVec, smallvec};
 
-use crate::{Error, INLINE_DATA_SIZE, Result, UvarReadExtensions, crc32, crc32_length};
-use std::{borrow::Cow, fmt::Debug, io, num::NonZero};
+use crate::{Error, INLINE_DATA_SIZE, PatchFile, Result, UvarReadExtensions, crc32, crc32_length};
+use std::{
+    borrow::Cow,
+    fmt::Debug,
+    fs,
+    io::{self, BufReader},
+    num::NonZero,
+};
 
 const BPS_HEADER: &[u8] = b"BPS1";
 
@@ -107,7 +113,9 @@ impl Record {
                 let old_pos = target.stream_position()?;
                 let eof = target.seek(io::SeekFrom::End(0))?;
 
-                let start_pos = old_pos.checked_add_signed(offset).ok_or_else(|| Error::OffsetOverflow("Record::TargetCopy offset"))?;
+                let start_pos = old_pos
+                    .checked_add_signed(offset)
+                    .ok_or(Error::OffsetOverflow("Record::TargetCopy offset"))?;
                 target.seek(io::SeekFrom::Start(start_pos))?;
 
                 let mut buf: SmallVec<[_; INLINE_DATA_SIZE]> =
@@ -116,8 +124,9 @@ impl Record {
                     let read_pos = start_pos + i as u64;
                     if read_pos >= eof {
                         buf.push(
-                            buf[usize::try_from(read_pos - eof)
-                                .map_err(|_| Error::OffsetOverflow("Record::TargetCopy RLE length"))?],
+                            buf[usize::try_from(read_pos - eof).map_err(|_| {
+                                Error::OffsetOverflow("Record::TargetCopy RLE length")
+                            })?],
                         );
                         target.seek_relative(1)?;
                     } else {
@@ -301,5 +310,21 @@ impl File {
     /// Inspect the records contained in this BPS file
     pub fn records(&self) -> impl Iterator<Item = &Record> {
         self.records.iter()
+    }
+}
+
+impl PatchFile for File {
+    type Record = Record;
+
+    fn parse(patch: &fs::File) -> Result<Self> {
+        Self::parse(BufReader::new(patch))
+    }
+
+    fn apply(&self, input: &fs::File, output: &mut fs::File) -> Result<()> {
+        self.apply(BufReader::new(input), output)
+    }
+
+    fn records(&self) -> impl Iterator<Item = &Self::Record> {
+        self.records()
     }
 }

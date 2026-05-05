@@ -1,6 +1,11 @@
-use std::{fmt::Debug, io, num::NonZero};
+use std::{
+    fmt::Debug,
+    fs,
+    io::{self, BufReader, BufWriter, Write},
+    num::NonZero,
+};
 
-use crate::{Error, Result};
+use crate::{Error, PatchFile, Result};
 use byteorder::{BE, ByteOrder, ReadBytesExt, WriteBytesExt};
 use smallvec::SmallVec;
 
@@ -167,5 +172,24 @@ impl File {
     /// Inspect the records contained in this IPS file
     pub fn records(&self) -> impl Iterator<Item = &Record> {
         self.records.iter()
+    }
+}
+
+impl PatchFile for File {
+    type Record = Record;
+
+    fn parse(patch: &fs::File) -> Result<Self> {
+        Self::parse(BufReader::new(patch))
+    }
+
+    fn apply(&self, input: &fs::File, output: &mut fs::File) -> Result<()> {
+        let mut output = BufWriter::new(output);
+        self.apply(BufReader::new(input), &mut output)?;
+        output.flush()?;
+        Ok(())
+    }
+
+    fn records(&self) -> impl Iterator<Item = &Self::Record> {
+        self.records()
     }
 }
