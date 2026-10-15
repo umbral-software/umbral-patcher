@@ -1,6 +1,6 @@
 [package]
 name = "umbral-patch"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2024"
 description = "A BPS/IPS/UPS patcher for rust"
 repository = "https://github.com/umbral-software/umbral-patcher"
@@ -9,4 +9,4 @@ license = "MIT"
 [dependencies]
 byteorder = "1.5"
 crc = "3.4"
-smallvec = { version = "1.15", features = ["const_generics", "union"] }
+smallvec = { version = "1.16", features = ["const_generics", "union"] }
